@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { AccountHead } from '../../types';
 import { PlusIcon, CheckCircleIcon, ClockIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
@@ -7,14 +8,8 @@ import EditAccountHeadModal from './EditAccountHeadModal';
 import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 import ConfirmationModal from '../users/ConfirmationModal';
 
-export const mockAccountHeads: AccountHead[] = [
-  { id: 'AH-001', name: 'Main Operations', bankName: 'Dubai Islamic Bank', accountNumber: '**** **** **** 1234', status: 'Active' },
-  { id: 'AH-002', name: 'Project Alpha Payouts', bankName: 'Emirates NBD', accountNumber: '**** **** **** 5678', status: 'Active' },
-  { id: 'AH-003', name: 'Petty Cash Account', bankName: 'First Abu Dhabi Bank', accountNumber: '**** **** **** 9012', status: 'Pending Approval' },
-];
-
 const AccountHeadsPage: React.FC = () => {
-  const [accounts, setAccounts] = useState<AccountHead[]>(mockAccountHeads);
+  const [accounts, setAccounts] = useState<AccountHead[]>([]);
   const { hasPermission } = useAuth();
 
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -24,6 +19,12 @@ const AccountHeadsPage: React.FC = () => {
 
   const [selectedAccount, setSelectedAccount] = useState<AccountHead | null>(null);
 
+  useEffect(() => {
+    fetch('/api/account-heads')
+        .then(res => res.json())
+        .then(setAccounts);
+  }, []);
+
   const handleApproveConfirm = () => {
     if (selectedAccount) {
       setAccounts(accounts.map(acc => acc.id === selectedAccount.id ? { ...acc, status: 'Active' } : acc));
@@ -32,8 +33,14 @@ const AccountHeadsPage: React.FC = () => {
     setSelectedAccount(null);
   };
   
-  const handleAddAccount = (newAccount: Omit<AccountHead, 'id'>) => {
-    setAccounts([...accounts, { ...newAccount, id: `AH-${Date.now().toString().slice(-4)}` }]);
+  const handleAddAccount = async (newAccountData: Omit<AccountHead, 'id'>) => {
+    const response = await fetch('/api/account-heads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAccountData)
+    });
+    const newAccount = await response.json();
+    setAccounts([...accounts, newAccount]);
     setAddModalOpen(false);
   };
   

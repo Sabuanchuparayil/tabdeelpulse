@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -15,15 +16,7 @@ import TaskManagementPage from '../tasks/TaskManagementPage';
 import AnnouncementsPage from '../announcements/AnnouncementsPage';
 import type { Role, Task, Announcement } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
-import { mockAnnouncements } from '../../data/mockData';
 import { ExclamationTriangleIcon } from '../icons/Icons';
-
-const mockTasks: Task[] = [
-    { id: 'task-1', description: 'Review Q3 budget proposals', deadline: '2024-07-25', isCompleted: false },
-    { id: 'task-2', description: 'Follow up with Al Naboodah on pending invoice', deadline: '2024-07-24', isCompleted: false },
-    { id: 'task-3', description: 'Prepare for weekly sync meeting', deadline: '2024-07-23', isCompleted: true },
-    { id: 'task-4', description: 'Onboard new technician hires', deadline: '2024-07-26', isCompleted: false },
-];
 
 
 interface MainLayoutProps {
@@ -45,8 +38,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
     }
     return initialRoles;
   });
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
-  const [announcements, setAnnouncements] = useState<Announcement[]>(mockAnnouncements);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { user, originalUser, switchUser } = useAuth();
   
@@ -57,35 +50,46 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
         console.error("Failed to save roles to localStorage", error);
     }
   }, [roles]);
+
+  useEffect(() => {
+    fetch('/api/tasks').then(res => res.json()).then(setTasks);
+    fetch('/api/announcements').then(res => res.json()).then(setAnnouncements);
+  }, []);
   
-  const handleAddTask = (taskData: Omit<Task, 'id' | 'isCompleted'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: `task-${Date.now()}`,
-      isCompleted: false,
-    };
+  const handleAddTask = async (taskData: Omit<Task, 'id' | 'isCompleted'>) => {
+    const response = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(taskData)
+    });
+    const newTask = await response.json();
     setTasks(prev => [newTask, ...prev]);
   };
 
-  const handleToggleTask = (taskId: string) => {
-    setTasks(prev => 
+  const handleToggleTask = async (taskId: string) => {
+     setTasks(prev => 
       prev.map(task => 
         task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
       )
     );
+    await fetch(`/api/tasks/${taskId}/toggle`, { method: 'PUT' });
   };
 
-  const handleAddAnnouncement = (announcementData: Omit<Announcement, 'id' | 'author' | 'timestamp'>) => {
+  const handleAddAnnouncement = async (announcementData: Omit<Announcement, 'id' | 'author' | 'timestamp'>) => {
     if (!user) return;
-    const newAnnouncement: Announcement = {
+    const newAnnouncementData = {
         ...announcementData,
-        id: `ann-${Date.now()}`,
         author: {
             name: user.name,
             avatarUrl: user.avatarUrl || ''
         },
-        timestamp: new Date().toISOString().split('T')[0],
     };
+    const response = await fetch('/api/announcements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAnnouncementData)
+    });
+    const newAnnouncement = await response.json();
     setAnnouncements(prev => [newAnnouncement, ...prev]);
   };
 

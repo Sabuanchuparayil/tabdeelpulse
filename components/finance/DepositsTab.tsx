@@ -1,18 +1,24 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { Deposit } from '../../types';
 import { PlusIcon, ArrowDownTrayIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import LogDepositModal from './LogDepositModal';
-import { mockDeposits } from '../../data/mockData';
 
 type SortDirection = 'ascending' | 'descending';
 type SortableKeys = 'date' | 'amount';
 
 const DepositsTab: React.FC = () => {
-  const [deposits, setDeposits] = useState<Deposit[]>(mockDeposits);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: SortDirection } | null>({ key: 'date', direction: 'descending' });
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/finance/deposits')
+      .then(res => res.json())
+      .then(setDeposits);
+  }, []);
 
   const sortedDeposits = useMemo(() => {
     let sortableItems = [...deposits];
@@ -156,7 +162,7 @@ const DepositsTab: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{dep.id}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{dep.accountHead}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">{dep.amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{dep.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(dep.date).toLocaleDateString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={dep.status} /></td>
                 </tr>
               ))}
@@ -177,7 +183,7 @@ const DepositsTab: React.FC = () => {
               </div>
               <div className="mt-2 flex justify-between items-baseline">
                 <div className="text-lg font-semibold text-gray-900 dark:text-white">{dep.amount.toFixed(2)} AED</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">{dep.date}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(dep.date).toLocaleDateString()}</div>
               </div>
             </div>
           ))}

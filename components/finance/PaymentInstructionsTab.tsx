@@ -1,21 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { PaymentInstruction, currentUser } from '../../types';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { PaymentInstruction } from '../../types';
 import { PlusIcon, ClockIcon, CheckCircleIcon, XCircleIcon, DocumentDuplicateIcon, EllipsisVerticalIcon, HandThumbUpIcon, HandThumbDownIcon, BellAlertIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import NewPaymentInstructionModal from './NewPaymentInstructionModal';
 import { useAuth } from '../../hooks/useAuth';
 import TransactionDetailsModal from './TransactionDetailsModal';
-import { mockInstructions } from '../../data/mockData';
 
 type SortDirection = 'ascending' | 'descending';
 type SortableKeys = 'dueDate' | 'amount';
 
 const PaymentInstructionsTab: React.FC = () => {
-    const [instructions, setInstructions] = useState<PaymentInstruction[]>(mockInstructions);
+    const [instructions, setInstructions] = useState<PaymentInstruction[]>([]);
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: SortDirection } | null>({ key: 'dueDate', direction: 'descending' });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
     const [selectedInstruction, setSelectedInstruction] = useState<PaymentInstruction | null>(null);
     const { user, hasPermission } = useAuth();
+
+    useEffect(() => {
+        fetch('/api/finance/instructions')
+            .then(res => res.json())
+            .then(setInstructions);
+    }, []);
 
     const sortedInstructions = useMemo(() => {
         let sortableItems = [...instructions];
@@ -174,7 +180,7 @@ const PaymentInstructionsTab: React.FC = () => {
                       <div className="text-sm text-gray-900 dark:text-white font-semibold">{inst.amount.toFixed(2)} {inst.currency}</div>
                       {inst.isRecurring && <div className="text-xs text-blue-500 flex items-center"><DocumentDuplicateIcon className="h-3 w-3 mr-1"/>Recurring</div>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{inst.dueDate}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(inst.dueDate).toLocaleDateString()}</td>
                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       {inst.isRecurring ? (
                         <div className="flex items-center" title="A reminder will be created 3 days before the due date.">
@@ -186,7 +192,7 @@ const PaymentInstructionsTab: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {inst.isRecurring && inst.nextDueDate ? (
                         <div>
-                          <div className="text-gray-900 dark:text-white font-medium">{inst.nextDueDate}</div>
+                          <div className="text-gray-900 dark:text-white font-medium">{new Date(inst.nextDueDate).toLocaleDateString()}</div>
                           <div className="text-gray-500 dark:text-gray-400">{inst.balance?.toFixed(2)} {inst.currency}</div>
                         </div>
                       ) : (
@@ -214,12 +220,12 @@ const PaymentInstructionsTab: React.FC = () => {
                 </div>
                 <div className="mt-2">
                   <div className="text-lg text-gray-900 dark:text-white font-semibold">{inst.amount.toFixed(2)} {inst.currency}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Due: {inst.dueDate}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Due: {new Date(inst.dueDate).toLocaleDateString()}</div>
                 </div>
                 {inst.isRecurring && (
                   <div className="mt-2 text-sm border-t border-gray-200 dark:border-gray-700 pt-2">
                     <div className="font-semibold text-blue-600 dark:text-blue-400">Recurring Payment</div>
-                    <div>Next Due: <span className="font-medium">{inst.nextDueDate}</span></div>
+                    <div>Next Due: <span className="font-medium">{inst.nextDueDate ? new Date(inst.nextDueDate).toLocaleDateString() : ''}</span></div>
                     <div>Balance: <span className="font-medium">{inst.balance?.toFixed(2)} {inst.currency}</span></div>
                   </div>
                 )}

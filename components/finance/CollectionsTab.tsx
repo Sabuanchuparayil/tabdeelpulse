@@ -1,18 +1,24 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { Collection } from '../../types';
 import { PlusIcon, ArrowDownTrayIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import LogCollectionModal from './LogCollectionModal';
-import { mockCollections } from '../../data/mockData';
 
 type SortDirection = 'ascending' | 'descending';
 type SortableKeys = 'date' | 'amount';
 
 const CollectionsTab: React.FC = () => {
-  const [collections, setCollections] = useState<Collection[]>(mockCollections);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: SortDirection } | null>({ key: 'date', direction: 'descending' });
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/finance/collections')
+      .then(res => res.json())
+      .then(setCollections);
+  }, []);
 
   const sortedCollections = useMemo(() => {
     let sortableItems = [...collections];
@@ -169,7 +175,7 @@ const CollectionsTab: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">{col.amount.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 dark:text-red-400">{col.outstandingAmount?.toFixed(2) ?? 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{col.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(col.date).toLocaleDateString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={col.status} /></td>
                 </tr>
               ))}
@@ -199,7 +205,7 @@ const CollectionsTab: React.FC = () => {
                   </div>
                    <div>
                     <div className="text-xs text-gray-500">Date</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{col.date}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(col.date).toLocaleDateString()}</div>
                   </div>
                    <div>
                     <div className="text-xs text-gray-500">Type</div>

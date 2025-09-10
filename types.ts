@@ -1,3 +1,4 @@
+
 export type UserStatus = 'Active' | 'Disabled';
 export type UserRole = string;
 
@@ -200,12 +201,6 @@ export interface Announcement {
   };
   timestamp: string;
 }
-
-export const mockUsersList: { name: string; avatarUrl: string, id: number }[] = [
-    { id: 1, name: 'Mohammed Semeem', avatarUrl: 'https://picsum.photos/seed/semeem/100/100' },
-    { id: 2, name: 'Suhair Mahmoud', avatarUrl: 'https://picsum.photos/seed/suhair/100/100' },
-    { id: 4, name: 'Shiraj', avatarUrl: 'https://picsum.photos/seed/shiraj/100/100' },
-];
 
 export const currentUser: { name: string; avatarUrl: string } = {
     name: 'Mohammed Semeem', // Corresponds to the user in MainLayout

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Project } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
@@ -6,16 +7,8 @@ import AddProjectModal from './AddProjectModal';
 import EditProjectModal from './EditProjectModal';
 import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 
-export const mockProjects: Project[] = [
-  { id: 'PROJ-001', name: 'Al Quoz Labour Camp Internet', client: 'Al Naboodah Construction', status: 'Active' },
-  { id: 'PROJ-002', name: 'Jebel Ali Labour Village Connectivity', client: 'DP World', status: 'Active' },
-  { id: 'PROJ-003', name: 'ICD Brookfield Place Security System Upgrade', client: 'ICD Brookfield', status: 'Active' },
-  { id: 'PROJ-004', name: 'City Walk Building 7 BMS', client: 'Meraas', status: 'On Hold' },
-  { id: 'PROJ-005', name: 'Dubai Hills Villa ELV Integration', client: 'Emaar Properties', status: 'Completed' },
-];
-
 const ProjectsPage: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
   const { hasPermission } = useAuth();
 
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -23,19 +16,38 @@ const ProjectsPage: React.FC = () => {
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  const handleAddProject = (newProject: Omit<Project, 'id'>) => {
-    setProjects(prev => [...prev, { ...newProject, id: `PROJ-${Date.now().toString().slice(-4)}` }]);
+  useEffect(() => {
+    fetch('/api/projects')
+      .then(res => res.json())
+      .then(data => setProjects(data));
+  }, []);
+
+  const handleAddProject = async (newProjectData: Omit<Project, 'id'>) => {
+    const response = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProjectData)
+    });
+    const newProject = await response.json();
+    setProjects(prev => [...prev, newProject]);
     setAddModalOpen(false);
   };
   
-  const handleUpdateProject = (updatedProject: Project) => {
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+  const handleUpdateProject = async (updatedProject: Project) => {
+    const response = await fetch(`/api/projects/${updatedProject.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedProject)
+    });
+    const returnedProject = await response.json();
+    setProjects(prev => prev.map(p => p.id === returnedProject.id ? returnedProject : p));
     setEditModalOpen(false);
     setSelectedProject(null);
   };
   
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (selectedProject) {
+      await fetch(`/api/projects/${selectedProject.id}`, { method: 'DELETE' });
       setProjects(prev => prev.filter(p => p.id !== selectedProject.id));
     }
     setDeleteModalOpen(false);
@@ -90,7 +102,7 @@ const ProjectsPage: React.FC = () => {
                 <tr key={proj.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">{proj.name}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{proj.id}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{proj.client}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -115,7 +127,7 @@ const ProjectsPage: React.FC = () => {
               <div className="flex justify-between items-start">
                   <div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white">{proj.name}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{proj.id}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
                   </div>
                   <StatusBadge status={proj.status} />
               </div>

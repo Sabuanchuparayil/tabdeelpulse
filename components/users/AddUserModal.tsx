@@ -1,3 +1,4 @@
+
 import React, { useState, FormEvent, useEffect } from 'react';
 import type { User, UserRole, UserStatus, Role } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
@@ -5,8 +6,6 @@ import { XMarkIcon } from '../icons/Icons';
 interface AddUserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // FIX: The type for onAddUser was incorrect, expecting properties that are not passed from this component.
-  // The new type correctly reflects the object being passed.
   onAddUser: (user: Omit<User, 'id' | 'avatarUrl' | 'role' | 'permissions' | 'financialLimit'>) => void;
   roles: Role[];
 }
@@ -55,7 +54,14 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onAddUser({ name, email, roleId, status });
+      // FIX: Removed `avatarUrl` from the call to onAddUser as it's not an expected property.
+      // The `avatarUrl` is generated in the `handleAddUser` function in UserManagementPage.
+      onAddUser({ 
+        name, 
+        email, 
+        roleId, 
+        status
+      });
     }
   };
   

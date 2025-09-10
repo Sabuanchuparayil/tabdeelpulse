@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import type { User, Permission } from '../types';
 import { initialRoles } from '../components/roles/RoleManagementPage';
-import { MOCK_USERS } from '../data/mockData';
 
 interface AuthContextType {
   user: User | null;
@@ -9,9 +9,9 @@ interface AuthContextType {
   allUsers: User[];
   switchUser: (userId: number) => void;
   hasPermission: (permission: Permission) => boolean;
-  addUser: (newUser: User) => void;
-  updateUser: (updatedUser: User) => void;
-  deleteUser: (userId: number) => void;
+  addUser: (newUser: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit' | 'avatarUrl'> & { avatarUrl?: string }) => Promise<void>;
+  updateUser: (updatedUser: User) => Promise<void>;
+  deleteUser: (userId: number) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,37 +26,91 @@ const enhanceUser = (user: User, roles: typeof initialRoles): User => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allUsers, setAllUsers] = useState<User[]>(() => MOCK_USERS.map(u => enhanceUser(u, initialRoles)));
-  
-  // FIX: Rename `originalAdminUser` to `originalUser` to align with the context value.
-  const originalUser = useMemo(() => allUsers.find(u => u.id === 1) || null, [allUsers]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [activeUser, setActiveUser] = useState<User | null>(null);
 
-  const [activeUser, setActiveUser] = useState<User | null>(originalUser);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const usersFromApi: User[] = await response.json();
+        const enhancedUsers = usersFromApi.map(u => enhanceUser(u, initialRoles));
+        setAllUsers(enhancedUsers);
+        
+        // Set the initial user after fetching
+        const initialAdmin = enhancedUsers.find(u => u.id === 1);
+        if (initialAdmin) {
+            setActiveUser(initialAdmin);
+        }
+
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        // In a real app, you'd want to set an error state to show the user
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const originalUser = useMemo(() => allUsers.find(u => u.id === 1) || null, [allUsers]);
 
   const switchUser = useCallback((userId: number) => {
     const userToSwitchTo = allUsers.find(u => u.id === userId);
     setActiveUser(userToSwitchTo || null);
   }, [allUsers]);
   
-  const addUser = (newUser: Omit<User, 'permissions' | 'financialLimit'>) => {
-      const enhancedNewUser = enhanceUser(newUser as User, initialRoles);
-      setAllUsers(prevUsers => [enhancedNewUser, ...prevUsers]);
+  const addUser = async (newUserData: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit'>) => {
+    try {
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newUserData),
+        });
+        if (!response.ok) throw new Error('Failed to add user');
+        const addedUserFromApi = await response.json();
+        const enhancedNewUser = enhanceUser(addedUserFromApi, initialRoles);
+        setAllUsers(prevUsers => [enhancedNewUser, ...prevUsers]);
+    } catch (error) {
+        console.error("Error adding user:", error);
+    }
   };
   
-  const updateUser = (updatedUser: User) => {
-      setAllUsers(users => users.map(user => user.id === updatedUser.id ? updatedUser : user));
-      if (activeUser?.id === updatedUser.id) {
-          setActiveUser(updatedUser);
-      }
+  const updateUser = async (updatedUser: User) => {
+     try {
+        const response = await fetch(`/api/users/${updatedUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedUser),
+        });
+        if (!response.ok) throw new Error('Failed to update user');
+        const updatedUserFromApi = await response.json();
+        const enhancedUser = enhanceUser(updatedUserFromApi, initialRoles);
+        setAllUsers(users => users.map(user => user.id === enhancedUser.id ? enhancedUser : user));
+        if (activeUser?.id === enhancedUser.id) {
+            setActiveUser(enhancedUser);
+        }
+    } catch (error) {
+        console.error("Error updating user:", error);
+    }
   };
 
-  const deleteUser = (userId: number) => {
-      if (activeUser?.id === userId) {
-        if(originalUser) {
-            switchUser(originalUser.id);
+  const deleteUser = async (userId: number) => {
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) {
+            throw new Error('Failed to delete user');
         }
-      }
-      setAllUsers(users => users.filter(user => user.id !== userId));
+        setAllUsers(users => users.filter(user => user.id !== userId));
+        if (activeUser?.id === userId && originalUser) {
+            setActiveUser(originalUser);
+        }
+    } catch (error) {
+        console.error("Error deleting user:", error);
+    }
   };
 
   const hasPermission = useMemo(() => (permission: Permission): boolean => {

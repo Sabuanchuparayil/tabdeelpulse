@@ -2,7 +2,7 @@ import React, { useState, FormEvent, useEffect } from 'react';
 import type { Thread, Message } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
-import { mockUsersList } from '../../types';
+// FIX: Removed incorrect import of mockUsersList as it does not exist.
 
 interface CreateThreadModalProps {
   isOpen: boolean;
@@ -15,9 +15,10 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({ isOpen, onClose, 
   const [initialMessage, setInitialMessage] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<number>>(new Set());
   const [errors, setErrors] = useState<{ title?: string; initialMessage?: string, participants?: string } >({});
-  const { user: currentUser } = useAuth();
+  // FIX: Get `allUsers` from useAuth to populate the participants list.
+  const { user: currentUser, allUsers } = useAuth();
   
-  const availableUsers = mockUsersList.filter(u => u.id !== currentUser?.id);
+  const availableUsers = allUsers.filter(u => u.id !== currentUser?.id);
 
   useEffect(() => {
     if (isOpen) {
@@ -60,7 +61,8 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({ isOpen, onClose, 
         };
         const participants = [
             { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
-            ...mockUsersList.filter(u => selectedParticipants.has(u.id))
+            // FIX: Use `allUsers` to find selected participants.
+            ...allUsers.filter(u => selectedParticipants.has(u.id))
         ];
 
         onSave({

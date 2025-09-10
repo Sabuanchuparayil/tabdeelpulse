@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { ServiceJob, JobStatus } from '../../types';
 import JobDetailsModal from './JobDetailsModal';
 import CreateJobModal from './CreateJobModal';
 import { PlusIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
-import { mockServiceJobs } from '../../data/mockData';
 
 const PriorityBadge: React.FC<{ priority: ServiceJob['priority'] }> = ({ priority }) => {
     const colors = {
@@ -28,7 +28,7 @@ type SortDirection = 'ascending' | 'descending';
 type SortableKeys = 'project' | 'priority' | 'status';
 
 const ServiceJobsPage: React.FC = () => {
-    const [jobs, setJobs] = useState<ServiceJob[]>(mockServiceJobs);
+    const [jobs, setJobs] = useState<ServiceJob[]>([]);
     const [selectedJob, setSelectedJob] = useState<ServiceJob | null>(null);
     const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
@@ -36,6 +36,12 @@ const ServiceJobsPage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
     const [priorityFilter, setPriorityFilter] = useState<ServiceJob['priority'] | 'all'>('all');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: SortDirection } | null>(null);
+
+    useEffect(() => {
+        fetch('/api/service-jobs')
+            .then(res => res.json())
+            .then(setJobs);
+    }, []);
 
     const handleSelectJob = (job: ServiceJob) => {
         setSelectedJob(job);
@@ -45,12 +51,13 @@ const ServiceJobsPage: React.FC = () => {
         setSelectedJob(null);
     };
     
-    const handleAddJob = (newJobData: Omit<ServiceJob, 'id' | 'status'>) => {
-        const newJob: ServiceJob = {
-            ...newJobData,
-            id: `SJ-${Date.now().toString().slice(-4)}`,
-            status: 'Assigned',
-        };
+    const handleAddJob = async (newJobData: Omit<ServiceJob, 'id' | 'status'>) => {
+        const response = await fetch('/api/service-jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newJobData)
+        });
+        const newJob = await response.json();
         setJobs(prevJobs => [newJob, ...prevJobs]);
         setCreateModalOpen(false);
     };

@@ -1,7 +1,8 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import type { Deposit } from '../../types';
+// FIX: Added AccountHead type for fetched data.
+import type { Deposit, AccountHead } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
-import { mockAccountHeads } from '../accounts/AccountHeadsPage';
+// FIX: Removed incorrect import of mockAccountHeads as it is not exported.
 import DocumentUpload from './DocumentUpload';
 
 interface LogDepositModalProps {
@@ -16,9 +17,13 @@ const LogDepositModal: React.FC<LogDepositModalProps> = ({ isOpen, onClose, onAd
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [document, setDocument] = useState<File | null>(null);
     const [errors, setErrors] = useState<{ accountHead?: string; amount?: string; date?: string; }>({});
+    // FIX: Add state to hold fetched account heads.
+    const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
 
     useEffect(() => {
         if (isOpen) {
+            // FIX: Fetch account heads from the API when the modal is opened.
+            fetch('/api/account-heads').then(res => res.json()).then(setAccountHeads);
             setAccountHead('');
             setAmount('');
             setDate(new Date().toISOString().split('T')[0]);
@@ -27,7 +32,7 @@ const LogDepositModal: React.FC<LogDepositModalProps> = ({ isOpen, onClose, onAd
         }
     }, [isOpen]);
     
-    const activeAccountHeads = mockAccountHeads.filter(acc => acc.status === 'Active');
+    const activeAccountHeads = accountHeads.filter(acc => acc.status === 'Active');
 
     const validate = () => {
         const newErrors: typeof errors = {};

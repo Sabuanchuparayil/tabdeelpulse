@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import KpiCard from './KpiCard';
 import FinancialChart from './FinancialChart';
 import ActivityFeed from './ActivityFeed';
-import type { Kpi, FinancialDataPoint, ActivityItem, Announcement } from '../../types';
-import { mockInstructions, mockServiceJobs, mockThreads, mockCollections } from '../../data/mockData';
+// FIX: Import types for fetched data instead of mock data from mockData.ts
+import type { Kpi, FinancialDataPoint, ActivityItem, Announcement, PaymentInstruction, ServiceJob, Collection } from '../../types';
+import { mockThreads } from '../../data/mockData';
 import { MegaphoneIcon } from '../icons/Icons';
 
 interface DashboardPageProps {
@@ -12,12 +13,23 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements }) => {
+    // FIX: Add state and useEffect to fetch data for KPIs instead of using static mock data.
+    const [collections, setCollections] = useState<Collection[]>([]);
+    const [instructions, setInstructions] = useState<PaymentInstruction[]>([]);
+    const [serviceJobs, setServiceJobs] = useState<ServiceJob[]>([]);
+
+    useEffect(() => {
+        fetch('/api/finance/collections').then(res => res.json()).then(setCollections);
+        fetch('/api/finance/instructions').then(res => res.json()).then(setInstructions);
+        fetch('/api/service-jobs').then(res => res.json()).then(setServiceJobs);
+    }, []);
+
     // Calculate KPIs dynamically
-    const totalCollections = mockCollections.reduce((sum, c) => sum + c.amount, 0);
-    const pendingApprovals = mockInstructions.filter(i => i.status === 'Pending');
+    const totalCollections = collections.reduce((sum, c) => sum + c.amount, 0);
+    const pendingApprovals = instructions.filter(i => i.status === 'Pending');
     const pendingApprovalsCount = pendingApprovals.length;
     const pendingApprovalsValue = pendingApprovals.reduce((sum, i) => sum + i.amount, 0);
-    const activeJobsCount = mockServiceJobs.filter(j => j.status === 'In Progress' || j.status === 'Assigned').length;
+    const activeJobsCount = serviceJobs.filter(j => j.status === 'In Progress' || j.status === 'Assigned').length;
     const unreadMessagesCount = mockThreads.reduce((sum, t) => sum + t.unreadCount, 0);
 
     const kpiData: Kpi[] = [
