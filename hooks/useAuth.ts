@@ -1,12 +1,13 @@
-
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import type { User, Permission } from '../types';
+import type { User, Permission, Role } from '../types';
 import { initialRoles } from '../components/roles/RoleManagementPage';
 
 interface AuthContextType {
   user: User | null;
   originalUser: User | null;
   allUsers: User[];
+  roles: Role[];
+  setRoles: React.Dispatch<React.SetStateAction<Role[]>>;
   switchUser: (userId: number) => void;
   hasPermission: (permission: Permission) => boolean;
   addUser: (newUser: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit' | 'avatarUrl'> & { avatarUrl?: string }) => Promise<void>;
@@ -16,18 +17,39 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const enhanceUser = (user: User, roles: typeof initialRoles): User => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [activeUser, setActiveUser] = useState<User | null>(null);
+
+  const [roles, setRoles] = useState<Role[]>(() => {
+    try {
+        const storedRoles = localStorage.getItem('tabdeel-pulse-roles');
+        if (storedRoles) {
+            const parsed = JSON.parse(storedRoles);
+            if (Array.isArray(parsed)) return parsed;
+        }
+    } catch (error) {
+        console.error("Failed to parse roles from localStorage", error);
+    }
+    return initialRoles;
+  });
+
+  useEffect(() => {
+    try {
+        localStorage.setItem('tabdeel-pulse-roles', JSON.stringify(roles));
+    } catch (error) {
+        console.error("Failed to save roles to localStorage", error);
+    }
+  }, [roles]);
+
+  const enhanceUser = useCallback((user: User): User => {
     const role = roles.find(r => r.id === user.roleId);
     return {
         ...user,
         permissions: role ? role.permissions : [],
         financialLimit: role?.id === 'Administrator' ? 100000 : (role?.id === 'Manager' ? 50000 : 0),
     };
-};
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [activeUser, setActiveUser] = useState<User | null>(null);
+  }, [roles]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -37,10 +59,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const usersFromApi: User[] = await response.json();
-        const enhancedUsers = usersFromApi.map(u => enhanceUser(u, initialRoles));
+        const enhancedUsers = usersFromApi.map(u => enhanceUser(u));
         setAllUsers(enhancedUsers);
         
-        // Set the initial user after fetching
         const initialAdmin = enhancedUsers.find(u => u.id === 1);
         if (initialAdmin) {
             setActiveUser(initialAdmin);
@@ -48,11 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       } catch (error) {
         console.error("Error fetching users:", error);
-        // In a real app, you'd want to set an error state to show the user
       }
     };
     fetchUsers();
-  }, []);
+  }, [enhanceUser]);
 
   const originalUser = useMemo(() => allUsers.find(u => u.id === 1) || null, [allUsers]);
 
@@ -70,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (!response.ok) throw new Error('Failed to add user');
         const addedUserFromApi = await response.json();
-        const enhancedNewUser = enhanceUser(addedUserFromApi, initialRoles);
+        const enhancedNewUser = enhanceUser(addedUserFromApi);
         setAllUsers(prevUsers => [enhancedNewUser, ...prevUsers]);
     } catch (error) {
         console.error("Error adding user:", error);
@@ -86,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (!response.ok) throw new Error('Failed to update user');
         const updatedUserFromApi = await response.json();
-        const enhancedUser = enhanceUser(updatedUserFromApi, initialRoles);
+        const enhancedUser = enhanceUser(updatedUserFromApi);
         setAllUsers(users => users.map(user => user.id === enhancedUser.id ? enhancedUser : user));
         if (activeUser?.id === enhancedUser.id) {
             setActiveUser(enhancedUser);
@@ -125,6 +145,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user: activeUser, 
       originalUser,
       allUsers,
+      roles,
+      setRoles,
       switchUser,
       hasPermission,
       addUser,

@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import LoginPage from './components/auth/LoginPage';
 import MainLayout from './components/layout/MainLayout';
 import { AuthProvider } from './hooks/useAuth';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -41,7 +42,9 @@ const App: React.FC = () => {
 
   return (
     <AuthProvider>
+      <ErrorBoundary>
         <MainLayout onLogout={handleLogout} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+      </ErrorBoundary>
     </AuthProvider>
   );
 };

@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import DashboardPage from '../dashboard/DashboardPage';
 import UserManagementPage from '../users/UserManagementPage';
 import UserProfilePage from '../users/UserProfilePage';
-import RoleManagementPage, { initialRoles } from '../roles/RoleManagementPage';
+import RoleManagementPage from '../roles/RoleManagementPage';
 import FinancePage from '../finance/FinancePage';
 import ServiceJobsPage from '../jobs/ServiceJobsPage';
 import MessagesPage from '../messages/MessagesPage';
@@ -14,7 +13,7 @@ import AccountHeadsPage from '../accounts/AccountHeadsPage';
 import SettingsPage from '../settings/SettingsPage';
 import TaskManagementPage from '../tasks/TaskManagementPage';
 import AnnouncementsPage from '../announcements/AnnouncementsPage';
-import type { Role, Task, Announcement } from '../../types';
+import type { Task, Announcement } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { ExclamationTriangleIcon } from '../icons/Icons';
 
@@ -27,30 +26,11 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDarkMode }) => {
   const [activePage, setActivePage] = useState('dashboard');
-  const [roles, setRoles] = useState<Role[]>(() => {
-    try {
-        const storedRoles = localStorage.getItem('tabdeel-pulse-roles');
-        if (storedRoles) {
-            return JSON.parse(storedRoles);
-        }
-    } catch (error) {
-        console.error("Failed to parse roles from localStorage", error);
-    }
-    return initialRoles;
-  });
   const [tasks, setTasks] = useState<Task[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { user, originalUser, switchUser } = useAuth();
   
-  useEffect(() => {
-    try {
-        localStorage.setItem('tabdeel-pulse-roles', JSON.stringify(roles));
-    } catch (error) {
-        console.error("Failed to save roles to localStorage", error);
-    }
-  }, [roles]);
-
   useEffect(() => {
     fetch('/api/tasks').then(res => res.json()).then(setTasks);
     fetch('/api/announcements').then(res => res.json()).then(setAnnouncements);
@@ -117,11 +97,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
       case 'tasks':
         return <TaskManagementPage tasks={tasks} onAddTask={handleAddTask} onToggleTask={handleToggleTask} />;
       case 'users':
-        return <UserManagementPage roles={roles} />;
+        return <UserManagementPage />;
       case 'profile':
         return <UserProfilePage user={user} />;
       case 'roles':
-        return <RoleManagementPage roles={roles} setRoles={setRoles} />;
+        return <RoleManagementPage />;
       case 'projects':
         return <ProjectsPage />;
       case 'account-heads':

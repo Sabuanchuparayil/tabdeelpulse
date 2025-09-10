@@ -8,12 +8,8 @@ import ConfirmationModal from './ConfirmationModal';
 import { useAuth } from '../../hooks/useAuth';
 
 
-interface UserManagementPageProps {
-  roles: Role[];
-}
-
-const UserManagementPage: React.FC<UserManagementPageProps> = ({ roles }) => {
-  const { allUsers, addUser, updateUser, deleteUser, user: currentUser, hasPermission } = useAuth();
+const UserManagementPage: React.FC = () => {
+  const { allUsers, roles, addUser, updateUser, deleteUser, user: currentUser, hasPermission } = useAuth();
   
   // Modal states
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -31,16 +27,7 @@ const UserManagementPage: React.FC<UserManagementPageProps> = ({ roles }) => {
 
   // Handlers for CRUD operations
   const handleAddUser = (newUserData: Omit<User, 'id' | 'avatarUrl' | 'role' | 'permissions' | 'financialLimit'>) => {
-    const role = roles.find(r => r.id === newUserData.roleId);
-    const newUser: User = {
-      ...newUserData,
-      id: Date.now(), // simple unique ID for mock
-      avatarUrl: `https://picsum.photos/seed/user${Date.now()}/40/40`,
-      role: role?.name || newUserData.roleId,
-      permissions: [], // Permissions will be added by the auth context
-      financialLimit: 0, // Financial limit will be set by the auth context
-    };
-    addUser(newUser as User);
+    addUser(newUserData);
     setAddModalOpen(false);
   };
 

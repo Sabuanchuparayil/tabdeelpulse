@@ -1,4 +1,3 @@
-
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -79,7 +78,6 @@ app.put('/api/users/:id', async (req, res) => {
 app.delete('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await pool.query('DELETE FROM tasks WHERE user_id = $1', [id]);
         const result = await pool.query('DELETE FROM users WHERE id = $1', [id]);
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'User not found' });

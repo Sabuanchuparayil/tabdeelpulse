@@ -33,16 +33,11 @@ export const initialRoles: Role[] = [
   },
 ];
 
-interface RoleManagementPageProps {
-  roles: Role[];
-  setRoles: React.Dispatch<React.SetStateAction<Role[]>>;
-}
-
-const RoleManagementPage: React.FC<RoleManagementPageProps> = ({ roles, setRoles }) => {
+const RoleManagementPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const { hasPermission } = useAuth();
+  const { roles, setRoles, hasPermission } = useAuth();
 
   const handleEditRole = (role: Role) => {
     setSelectedRole(role);
