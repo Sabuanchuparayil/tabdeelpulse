@@ -10,9 +10,8 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "@google/genai": "^1.16.0",
-    "recharts": "^3.1.2"
-  },
-  "devDependencies": {
+    "recharts": "^3.1.2",
     "esbuild": "^0.23.0"
-  }
+  },
+  "devDependencies": {}
 }
