@@ -1,5 +1,5 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import type { Thread, Message } from '../../types';
+import type { Thread, Message, User } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
 // FIX: Removed incorrect import of mockUsersList as it does not exist.
@@ -62,10 +62,12 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({ isOpen, onClose, 
         // FIX: The User object has an optional avatarUrl, which is not compatible with the Thread's participant type. Map the filtered users to provide a default empty string for avatarUrl, ensuring type compatibility.
         const participants = [
             { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
-            ...allUsers.filter(u => selectedParticipants.has(u.id)).map(u => ({
-                name: u.name,
-                avatarUrl: u.avatarUrl || '',
-            }))
+            ...allUsers
+                .filter(u => selectedParticipants.has(u.id))
+                .map(u => ({
+                    name: u.name,
+                    avatarUrl: u.avatarUrl || '',
+                }))
         ];
 
         onSave({
