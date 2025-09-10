@@ -59,10 +59,13 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({ isOpen, onClose, 
             text: initialMessage,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
         };
+        // FIX: The User object has an optional avatarUrl, which is not compatible with the Thread's participant type. Map the filtered users to provide a default empty string for avatarUrl, ensuring type compatibility.
         const participants = [
             { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
-            // FIX: Use `allUsers` to find selected participants.
-            ...allUsers.filter(u => selectedParticipants.has(u.id))
+            ...allUsers.filter(u => selectedParticipants.has(u.id)).map(u => ({
+                name: u.name,
+                avatarUrl: u.avatarUrl || '',
+            }))
         ];
 
         onSave({
