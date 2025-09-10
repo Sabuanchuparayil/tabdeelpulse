@@ -15,6 +15,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, isOpen, setOpen }) => {
   const mainNav: NavLink[] = [
     { id: 'dashboard', href: '#', label: 'Dashboard' },
+    { id: 'announcements', href: '#', label: 'Announcements' },
     { id: 'finance', href: '#', label: 'Finance' },
     { id: 'service-jobs', href: '#', label: 'Service Jobs' },
     { id: 'messages', href: '#', label: 'Messages' },

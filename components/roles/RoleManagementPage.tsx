@@ -10,14 +10,14 @@ export const initialRoles: Role[] = [
     id: 'Administrator',
     name: 'Administrator',
     description: 'Has full access to all system features and settings.',
-    permissions: ['users:create', 'users:read', 'users:update', 'users:delete', 'users:reset_password', 'finance:approve', 'jobs:assign', 'roles:manage', 'projects:create', 'projects:update', 'projects:delete', 'accounts:create', 'accounts:update', 'accounts:delete', 'system:admin'],
+    permissions: ['users:create', 'users:read', 'users:update', 'users:delete', 'users:reset_password', 'finance:approve', 'jobs:assign', 'roles:manage', 'projects:create', 'projects:update', 'projects:delete', 'accounts:create', 'accounts:update', 'accounts:delete', 'announcements:create', 'system:admin'],
   },
   {
     id: 'Manager',
     name: 'Manager',
     description: 'Can manage projects, assign jobs, and oversee team members.',
     // FIX: Replaced invalid 'projects:read' permission with 'projects:update' which is a valid permission.
-    permissions: ['users:read', 'users:update', 'jobs:assign', 'projects:update'],
+    permissions: ['users:read', 'users:update', 'jobs:assign', 'projects:update', 'announcements:create'],
   },
   {
     id: 'Technician',

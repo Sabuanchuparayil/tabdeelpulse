@@ -2,14 +2,16 @@ import React from 'react';
 import KpiCard from './KpiCard';
 import FinancialChart from './FinancialChart';
 import ActivityFeed from './ActivityFeed';
-import type { Kpi, FinancialDataPoint, ActivityItem } from '../../types';
+import type { Kpi, FinancialDataPoint, ActivityItem, Announcement } from '../../types';
 import { mockInstructions, mockServiceJobs, mockThreads, mockCollections } from '../../data/mockData';
+import { MegaphoneIcon } from '../icons/Icons';
 
 interface DashboardPageProps {
   onNavigate: (pageId: string) => void;
+  announcements: Announcement[];
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements }) => {
     // Calculate KPIs dynamically
     const totalCollections = mockCollections.reduce((sum, c) => sum + c.amount, 0);
     const pendingApprovals = mockInstructions.filter(i => i.status === 'Pending');
@@ -86,10 +88,36 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                 <FinancialChart data={financialData} />
             </div>
 
-            {/* Recent Activity Feed */}
-            <div className="bg-white dark:bg-dark-card p-6 rounded-lg shadow-md">
-                 <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Recent Activity</h2>
-                <ActivityFeed items={activityData} />
+            {/* Right Column with Activity and Announcements */}
+            <div className="space-y-6">
+                {/* Recent Activity Feed */}
+                <div className="bg-white dark:bg-dark-card p-6 rounded-lg shadow-md">
+                     <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Recent Activity</h2>
+                    <ActivityFeed items={activityData} />
+                </div>
+
+                {/* Announcements Feed */}
+                <div className="bg-white dark:bg-dark-card p-6 rounded-lg shadow-md">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Announcements</h2>
+                      <button onClick={() => onNavigate('announcements')} className="text-sm font-medium text-primary hover:text-primary/80">
+                        View all
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      {announcements.slice(0, 3).map(item => (
+                        <div key={item.id} className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <MegaphoneIcon className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.title}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                </div>
             </div>
         </div>
     </div>

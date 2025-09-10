@@ -29,6 +29,7 @@ export type Permission =
   | 'accounts:create'
   | 'accounts:update'
   | 'accounts:delete'
+  | 'announcements:create'
   | 'system:admin';
 
 export interface Role {
@@ -186,6 +187,18 @@ export interface Task {
   description: string;
   deadline: string; // YYYY-MM-DD
   isCompleted: boolean;
+}
+
+// Announcement Type
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  author: {
+    name: string;
+    avatarUrl: string;
+  };
+  timestamp: string;
 }
 
 export const mockUsersList: { name: string; avatarUrl: string, id: number }[] = [

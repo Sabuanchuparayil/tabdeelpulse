@@ -15,5 +15,6 @@ export const allPermissions: { id: Permission; label: string; description: strin
     { id: 'accounts:create', label: 'Create Account Heads', description: 'Can add new account heads.' },
     { id: 'accounts:update', label: 'Update Account Heads', description: 'Can edit existing account heads.' },
     { id: 'accounts:delete', label: 'Delete Account Heads', description: 'Can delete account heads.' },
+    { id: 'announcements:create', label: 'Create Announcements', description: 'Can create and publish company-wide announcements.' },
     { id: 'system:admin', label: 'System Admin', description: 'Full access to all system settings.' },
 ];

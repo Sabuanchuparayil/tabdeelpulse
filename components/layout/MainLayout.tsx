@@ -12,8 +12,10 @@ import ProjectsPage from '../projects/ProjectsPage';
 import AccountHeadsPage from '../accounts/AccountHeadsPage';
 import SettingsPage from '../settings/SettingsPage';
 import TaskManagementPage from '../tasks/TaskManagementPage';
-import type { Role, Task } from '../../types';
+import AnnouncementsPage from '../announcements/AnnouncementsPage';
+import type { Role, Task, Announcement } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { mockAnnouncements } from '../../data/mockData';
 import { ExclamationTriangleIcon } from '../icons/Icons';
 
 const mockTasks: Task[] = [
@@ -44,6 +46,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
     return initialRoles;
   });
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(mockAnnouncements);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { user, originalUser, switchUser } = useAuth();
   
@@ -70,6 +73,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
         task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
       )
     );
+  };
+
+  const handleAddAnnouncement = (announcementData: Omit<Announcement, 'id' | 'author' | 'timestamp'>) => {
+    if (!user) return;
+    const newAnnouncement: Announcement = {
+        ...announcementData,
+        id: `ann-${Date.now()}`,
+        author: {
+            name: user.name,
+            avatarUrl: user.avatarUrl || ''
+        },
+        timestamp: new Date().toISOString().split('T')[0],
+    };
+    setAnnouncements(prev => [newAnnouncement, ...prev]);
   };
 
 
@@ -107,9 +124,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
         return <AccountHeadsPage />;
       case 'settings':
         return <SettingsPage isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} />;
+      case 'announcements':
+        return <AnnouncementsPage announcements={announcements} onAddAnnouncement={handleAddAnnouncement} />;
       case 'dashboard':
       default:
-        return <DashboardPage onNavigate={handleNavigate} />;
+        return <DashboardPage onNavigate={handleNavigate} announcements={announcements} />;
     }
   };
 

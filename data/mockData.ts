@@ -1,4 +1,4 @@
-import { User, PaymentInstruction, Collection, Deposit, ServiceJob, Thread } from '../types';
+import { User, PaymentInstruction, Collection, Deposit, ServiceJob, Thread, Announcement } from '../types';
 
 // This is now the single source of truth for the list of mock users.
 // Note: The 'permissions' and 'financialLimit' properties will be added dynamically
@@ -15,6 +15,12 @@ export const MOCK_USERS: User[] = [
   { id: 8, name: 'Nakul', email: 'nakul@tabdeel.io', roleId: 'Technician', role: 'Technician', status: 'Disabled', avatarUrl: 'https://picsum.photos/seed/nakul/40/40', permissions:[], financialLimit: 0 },
   { id: 9, name: 'Elwin', email: 'elwin@tabdeel.io', roleId: 'Finance', role: 'Finance', status: 'Active', avatarUrl: 'https://picsum.photos/seed/elwin/40/40', permissions:[], financialLimit: 0 },
   { id: 10, name: 'Peesto', email: 'peesto@tabdeel.io', roleId: 'Finance', role: 'Finance', status: 'Active', avatarUrl: 'https://picsum.photos/seed/peesto/40/40', permissions:[], financialLimit: 0 },
+];
+
+export const mockAnnouncements: Announcement[] = [
+  { id: 'ann-1', title: 'System Maintenance Scheduled', content: 'There will be a scheduled system maintenance on Sunday at 2 AM. The system will be unavailable for approximately 30 minutes.\n\nWe apologize for any inconvenience.', author: { name: 'Mohammed Semeem', avatarUrl: 'https://picsum.photos/seed/semeem/40/40' }, timestamp: '2024-07-25' },
+  { id: 'ann-2', title: 'Welcome New Team Members!', content: 'Please join us in welcoming Nakul and Elwin to the team! They are joining as a Technician and Finance executive respectively.\n\nLet\'s make them feel welcome!', author: { name: 'Suhair Mahmoud', avatarUrl: 'https://picsum.photos/seed/suhair/40/40' }, timestamp: '2024-07-24' },
+  { id: 'ann-3', title: 'Q3 Performance Review', content: 'A reminder that Q3 performance reviews are due by the end of the month. Please schedule a meeting with your manager to discuss your progress.', author: { name: 'Suhair Mahmoud', avatarUrl: 'https://picsum.photos/seed/suhair/40/40' }, timestamp: '2024-07-22' },
 ];
 
 export const mockInstructions: PaymentInstruction[] = [
