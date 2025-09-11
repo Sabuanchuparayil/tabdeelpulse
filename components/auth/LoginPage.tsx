@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { PulseIcon, LockClosedIcon, EnvelopeIcon } from '../icons/Icons';
 import ForgotPasswordForm from './ForgotPasswordForm';
-
-// Define your live backend URL
-const BACKEND_URL = 'https://tabeel-backend.onrender.com';
+import API_BASE from '../../config';   // ✅ use config.ts
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -30,11 +28,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // This is the new function to handle the API call
   const login = async () => {
-    setLoginError(null); // Clear any previous errors
+    setLoginError(null);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/login`, {
+      const response = await fetch(`${API_BASE}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,13 +40,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       });
 
       if (!response.ok) {
-        // If the server response is not okay (e.g., 401 Unauthorized)
         const errorData = await response.json();
         throw new Error(errorData.error || 'Login failed. Please check your credentials.');
       }
 
-      // If the login is successful
-      onLogin();
+      onLogin(); // ✅ trigger app login
 
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -60,7 +55,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      login(); // Now we call the login function to make the API request
+      login();
     }
   };
 
@@ -81,6 +76,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
           <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
             <div className="space-y-4">
+              {/* Email input */}
               <div>
                 <label htmlFor="email-address" className="sr-only">Email address</label>
                 <div className="relative">
@@ -101,6 +97,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </div>
                 {errors.email && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.email}</p>}
               </div>
+
+              {/* Password input */}
               <div>
                 <label htmlFor="password" className="sr-only">Password</label>
                 <div className="relative">
@@ -123,6 +121,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
             </div>
 
+            {/* Remember me + Forgot password */}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <input
@@ -148,6 +147,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
             {loginError && <p className="mt-2 text-sm text-red-600 dark:text-red-400 text-center">{loginError}</p>}
 
+            {/* Submit button */}
             <div>
               <button
                 type="submit"
