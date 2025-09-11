@@ -1,15 +1,14 @@
-// App.tsx
-import React, { useState, useEffect } from "react";
-import LoginPage from "./components/auth/LoginPage";
-import MainLayout from "./components/layout/MainLayout";
-import { AuthProvider, useAuth } from "./hooks/useAuth";
-import ErrorBoundary from "./components/common/ErrorBoundary";
+import React, { useState, useCallback, useEffect } from 'react';
+import LoginPage from './components/auth/LoginPage';
+import MainLayout from './components/layout/MainLayout';
+import { AuthProvider } from './hooks/useAuth';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
-const AppContent: React.FC = () => {
-  const { user } = useAuth(); // 👈 comes from context
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== "undefined" && window.localStorage) {
-      return localStorage.getItem("theme") === "dark";
+const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isDarkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem('theme') === 'dark';
     }
     return false;
   });
@@ -17,35 +16,34 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const root = window.document.documentElement;
     if (isDarkMode) {
-      root.classList.add("dark");
-      localStorage.setItem("theme", "dark");
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
     } else {
-      root.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
 
-  const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
+  const handleLogin = useCallback(() => {
+    setIsAuthenticated(true);
+  }, []);
 
-  if (!user) {
-    // 👈 show login until we have a logged-in user
-    return <LoginPage />;
+  const handleLogout = useCallback(() => {
+    setIsAuthenticated(false);
+  }, []);
+
+  const toggleDarkMode = useCallback(() => {
+    setDarkMode(prevMode => !prevMode);
+  }, []);
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
   }
 
   return (
-    <MainLayout
-      onLogout={() => window.location.reload()} // simple logout: refresh clears context
-      isDarkMode={isDarkMode}
-      toggleDarkMode={toggleDarkMode}
-    />
-  );
-};
-
-const App: React.FC = () => {
-  return (
     <AuthProvider>
       <ErrorBoundary>
-        <AppContent />
+        <MainLayout onLogout={handleLogout} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
       </ErrorBoundary>
     </AuthProvider>
   );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Thread } from '../../types';
 import { PaperClipIcon, SparklesIcon, ArrowLeftIcon, PaperAirplaneIcon } from '../icons/Icons';
+import { GoogleGenAI } from "@google/genai";
 
 interface ChatViewProps {
   thread: Thread;
@@ -19,25 +20,21 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage }) =>
         setSummary('');
         setError('');
         try {
-            // In a real application, the API key should NOT be on the client.
-            // This fetch call simulates a request to your own secure backend endpoint.
-            // Your backend would then call the Gemini API with a secure API key.
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const conversationText = thread.messages.map(m => `${m.user.name}: ${m.text}`).join('\n');
-
-            // This is a placeholder for a real backend API call.
-            // It mimics the API response structure for demonstration.
-            const mockApiCall = new Promise<string>((resolve, reject) => {
-                setTimeout(() => {
-                    if (conversationText.length > 10) {
-                        resolve(`- **Budget Finalization:** Mohammed requested the budget be finalized by EOD.\n- **Suhair's Update:** Suhair provided updated figures, noting a new total of AED 1.2M due to material costs.\n- **Action Item:** Mohammed needs to review and approve the new budget to proceed with vendor negotiations.`);
-                    } else {
-                        reject(new Error("Conversation too short to summarize."));
-                    }
-                }, 1500);
-            });
             
-            const summaryText = await mockApiCall;
-            setSummary(summaryText);
+            if (conversationText.length < 50) { 
+                throw new Error("Conversation is too short to summarize.");
+            }
+
+            const prompt = `Summarize the following conversation into key bullet points. Focus on decisions made and action items:\n\n${conversationText}`;
+            
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+
+            setSummary(response.text);
 
         } catch (e: any) {
             console.error("Error generating summary:", e);
@@ -86,7 +83,7 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage }) =>
       {summary && (
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
             <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Summary</h4>
-            <div className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-wrap">{summary}</div>
+            <div className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br />') }}></div>
           </div>
       )}
        {error && (

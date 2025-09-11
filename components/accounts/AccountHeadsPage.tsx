@@ -7,6 +7,7 @@ import AddAccountHeadModal from './AddAccountHeadModal';
 import EditAccountHeadModal from './EditAccountHeadModal';
 import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 import ConfirmationModal from '../users/ConfirmationModal';
+import { backendUrl } from '../../config';
 
 const AccountHeadsPage: React.FC = () => {
   const [accounts, setAccounts] = useState<AccountHead[]>([]);
@@ -20,7 +21,7 @@ const AccountHeadsPage: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<AccountHead | null>(null);
 
   useEffect(() => {
-    fetch('/api/account-heads')
+    fetch(`${backendUrl}/api/account-heads`)
         .then(res => res.json())
         .then(setAccounts);
   }, []);
@@ -34,7 +35,7 @@ const AccountHeadsPage: React.FC = () => {
   };
   
   const handleAddAccount = async (newAccountData: Omit<AccountHead, 'id'>) => {
-    const response = await fetch('/api/account-heads', {
+    const response = await fetch(`${backendUrl}/api/account-heads`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newAccountData)

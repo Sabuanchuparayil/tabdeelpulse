@@ -1,37 +1,36 @@
-import React, { useState } from "react";
-import { PulseIcon, LockClosedIcon, EnvelopeIcon } from "../icons/Icons";
-import ForgotPasswordForm from "./ForgotPasswordForm";
-import { useAuth } from "../../hooks/useAuth";
 
-const LoginPage: React.FC = () => {
-  const { loginUser } = useAuth();
+import React, { useState } from 'react';
+import { PulseIcon, LockClosedIcon, EnvelopeIcon } from '../icons/Icons';
+import ForgotPasswordForm from './ForgotPasswordForm';
+
+interface LoginPageProps {
+  onLogin: () => void;
+}
+
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isForgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  const [email, setEmail] = useState("admin@tabdeel.com");
-  const [password, setPassword] = useState("password");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [email, setEmail] = useState('admin@tabdeel.com');
+  const [password, setPassword] = useState('password');
+  const [errors, setErrors] = useState<{ email?: string, password?: string }>({});
 
   const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    if (!email) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(email))
-      newErrors.email = "Invalid email format";
-    if (!password) newErrors.password = "Password is required";
+    const newErrors: { email?: string, password?: string } = {};
+    if (!email) {
+      newErrors.email = 'Email address is required.';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Email address is invalid.';
+    }
+    if (!password) {
+      newErrors.password = 'Password is required.';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-
-    try {
-      setLoginError(null);
-      await loginUser(email, password); // ✅ context handles login
-    } catch (err: any) {
-      setLoginError(err.message);
+    if (validate()) {
+      onLogin();
     }
   };
 
@@ -43,7 +42,7 @@ const LoginPage: React.FC = () => {
             <div className="mx-auto h-16 w-16 flex items-center justify-center">
               <PulseIcon className="h-16 w-16 text-primary" />
             </div>
-            <h2 className="mt-6 text-center text-3xl font-bold text-gray-900 dark:text-white">
+            <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
               Tabdeel Pulse
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
@@ -53,76 +52,82 @@ const LoginPage: React.FC = () => {
           <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="sr-only">
-                  Email
-                </label>
+                <label htmlFor="email-address" className="sr-only">Email address</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                     <EnvelopeIcon className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    id="email"
+                    id="email-address"
+                    name="email"
                     type="email"
+                    autoComplete="email"
+                    required
+                    className={`relative block w-full appearance-none rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 px-3 py-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm`}
+                    placeholder="Email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className={`block w-full rounded-md pl-10 py-3 text-sm border ${
-                      errors.email
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
-                    } bg-white dark:bg-gray-700`}
-                    placeholder="Email address"
                   />
                 </div>
-                {errors.email && (
-                  <p className="mt-2 text-sm text-red-600">{errors.email}</p>
-                )}
+                {errors.email && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.email}</p>}
               </div>
-
               <div>
-                <label htmlFor="password" className="sr-only">
-                  Password
-                </label>
+                <label htmlFor="password" className="sr-only">Password</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                    <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                     <LockClosedIcon className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     id="password"
+                    name="password"
                     type="password"
+                    autoComplete="current-password"
+                    required
+                    className={`relative block w-full appearance-none rounded-md border ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 px-3 py-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm`}
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className={`block w-full rounded-md pl-10 py-3 text-sm border ${
-                      errors.password
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
-                    } bg-white dark:bg-gray-700`}
-                    placeholder="Password"
                   />
                 </div>
-                {errors.password && (
-                  <p className="mt-2 text-sm text-red-600">{errors.password}</p>
-                )}
+                 {errors.password && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
               </div>
             </div>
 
-            {loginError && (
-              <p className="mt-2 text-sm text-red-600 text-center">
-                {loginError}
-              </p>
-            )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                  Remember me
+                </label>
+              </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 rounded-md bg-primary text-white font-semibold hover:bg-primary/90"
-            >
-              Sign in
-            </button>
+              <div className="text-sm">
+                <button
+                  type="button"
+                  onClick={() => setForgotPasswordOpen(true)}
+                  className="font-medium text-primary hover:text-primary/80 focus:outline-none"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                className="group relative flex w-full justify-center rounded-md border border-transparent bg-primary py-3 px-4 text-sm font-semibold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              >
+                Sign in
+              </button>
+            </div>
           </form>
         </div>
       </div>
-
       {isForgotPasswordOpen && (
         <ForgotPasswordForm
           onClose={() => setForgotPasswordOpen(false)}
