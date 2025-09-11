@@ -1,9 +1,7 @@
+
 import React, { useState } from 'react';
 import { PulseIcon, LockClosedIcon, EnvelopeIcon } from '../icons/Icons';
 import ForgotPasswordForm from './ForgotPasswordForm';
-
-// Define your live backend URL
-const BACKEND_URL = 'https://tabeel-backend.onrender.com';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -14,7 +12,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('admin@tabdeel.com');
   const [password, setPassword] = useState('password');
   const [errors, setErrors] = useState<{ email?: string, password?: string }>({});
-  const [loginError, setLoginError] = useState<string | null>(null);
 
   const validate = () => {
     const newErrors: { email?: string, password?: string } = {};
@@ -29,38 +26,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  // This is the new function to handle the API call
-  const login = async () => {
-    setLoginError(null); // Clear any previous errors
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        // If the server response is not okay (e.g., 401 Unauthorized)
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Login failed. Please check your credentials.');
-      }
-
-      // If the login is successful
-      onLogin();
-
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      setLoginError(error.message);
-    }
-  };
-
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      login(); // Now we call the login function to make the API request
+      onLogin();
     }
   };
 
@@ -85,7 +55,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 <label htmlFor="email-address" className="sr-only">Email address</label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                     <EnvelopeIcon className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     id="email-address"
@@ -104,8 +74,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <div>
                 <label htmlFor="password" className="sr-only">Password</label>
                 <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                     <LockClosedIcon className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     id="password"
@@ -119,7 +89,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
-                {errors.password && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
+                 {errors.password && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
               </div>
             </div>
 
@@ -146,7 +116,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </button>
               </div>
             </div>
-            {loginError && <p className="mt-2 text-sm text-red-600 dark:text-red-400 text-center">{loginError}</p>}
 
             <div>
               <button
