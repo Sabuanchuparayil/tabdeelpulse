@@ -28,6 +28,40 @@ app.use(express.static(path.join(__dirname, '')));
 // ========================== API ROUTES ==============================
 // ====================================================================
 
+// --- LOGIN API ---
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required." });
+  }
+
+  try {
+    // ⚠️ WARNING: Storing and comparing plain text passwords is insecure.
+    // In a real production environment, you should use hashed passwords (e.g., with bcrypt).
+    const result = await pool.query(
+      'SELECT id, name, email, role, status, avatar_url as "avatarUrl", role as "roleId" FROM users WHERE email = $1 AND password = $2',
+      [email, password]
+    );
+
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+       if (user.status === 'Disabled') {
+        return res.status(403).json({ error: "This user account has been disabled." });
+      }
+      res.json({
+        message: "Login successful",
+        user,
+      });
+    } else {
+      res.status(401).json({ error: "Invalid credentials" });
+    }
+  } catch (err) {
+    console.error("Error during login:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 // --- USERS API ---
 // GET all users
 app.get('/api/users', async (req, res) => {

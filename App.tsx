@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import LoginPage from './components/auth/LoginPage';
 import MainLayout from './components/layout/MainLayout';
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
-const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+const AppContent: React.FC = () => {
+  const { user, logout } = useAuth();
   const [isDarkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
       return localStorage.getItem('theme') === 'dark';
@@ -24,27 +24,25 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
-  const handleLogin = useCallback(() => {
-    setIsAuthenticated(true);
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    setIsAuthenticated(false);
-  }, []);
-
   const toggleDarkMode = useCallback(() => {
     setDarkMode(prevMode => !prevMode);
   }, []);
 
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
+  if (!user) {
+    return <LoginPage />;
   }
 
   return (
+    <ErrorBoundary>
+      <MainLayout onLogout={logout} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+    </ErrorBoundary>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <AuthProvider>
-      <ErrorBoundary>
-        <MainLayout onLogout={handleLogout} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
-      </ErrorBoundary>
+      <AppContent />
     </AuthProvider>
   );
 };

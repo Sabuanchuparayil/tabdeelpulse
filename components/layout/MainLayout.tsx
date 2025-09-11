@@ -82,8 +82,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
 
 
   if (!user) {
-    // Handle loading state or redirect
-    return <div className="flex items-center justify-center h-screen w-screen bg-light-bg dark:bg-dark-bg text-gray-500">Loading...</div>;
+    // This should ideally not be reached if App.tsx handles the check, but as a fallback:
+    return <div className="flex items-center justify-center h-screen w-screen bg-light-bg dark:bg-dark-bg text-gray-500">Loading user data...</div>;
   }
   
   const isImpersonating = originalUser && user.id !== originalUser.id;

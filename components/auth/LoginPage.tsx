@@ -1,17 +1,16 @@
-
 import React, { useState } from 'react';
 import { PulseIcon, LockClosedIcon, EnvelopeIcon } from '../icons/Icons';
 import ForgotPasswordForm from './ForgotPasswordForm';
+import { useAuth } from '../../hooks/useAuth';
 
-interface LoginPageProps {
-  onLogin: () => void;
-}
-
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC = () => {
   const [isForgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [email, setEmail] = useState('admin@tabdeel.com');
   const [password, setPassword] = useState('password');
-  const [errors, setErrors] = useState<{ email?: string, password?: string }>({});
+  const [formErrors, setFormErrors] = useState<{ email?: string, password?: string }>({});
+  const [apiError, setApiError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const validate = () => {
     const newErrors: { email?: string, password?: string } = {};
@@ -23,14 +22,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     if (!password) {
       newErrors.password = 'Password is required.';
     }
-    setErrors(newErrors);
+    setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError('');
     if (validate()) {
-      onLogin();
+      setIsLoading(true);
+      try {
+        await login(email, password);
+        // On success, the useAuth context will trigger a re-render to the main layout
+      } catch (err: any) {
+        setApiError(err.message || 'An unexpected error occurred.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -63,13 +71,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     type="email"
                     autoComplete="email"
                     required
-                    className={`relative block w-full appearance-none rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 px-3 py-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm`}
+                    className={`relative block w-full appearance-none rounded-md border ${formErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 px-3 py-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm`}
                     placeholder="Email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
-                {errors.email && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.email}</p>}
+                {formErrors.email && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{formErrors.email}</p>}
               </div>
               <div>
                 <label htmlFor="password" className="sr-only">Password</label>
@@ -83,15 +92,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     type="password"
                     autoComplete="current-password"
                     required
-                    className={`relative block w-full appearance-none rounded-md border ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 px-3 py-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm`}
+                    className={`relative block w-full appearance-none rounded-md border ${formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 px-3 py-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm`}
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
-                 {errors.password && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
+                 {formErrors.password && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{formErrors.password}</p>}
               </div>
             </div>
+
+            {apiError && <p className="text-sm text-red-600 dark:text-red-400 text-center">{apiError}</p>}
+
 
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -100,6 +113,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   name="remember-me"
                   type="checkbox"
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  disabled={isLoading}
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                   Remember me
@@ -111,6 +125,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setForgotPasswordOpen(true)}
                   className="font-medium text-primary hover:text-primary/80 focus:outline-none"
+                  disabled={isLoading}
                 >
                   Forgot your password?
                 </button>
@@ -120,9 +135,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <div>
               <button
                 type="submit"
-                className="group relative flex w-full justify-center rounded-md border border-transparent bg-primary py-3 px-4 text-sm font-semibold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                disabled={isLoading}
+                className="group relative flex w-full justify-center rounded-md border border-transparent bg-primary py-3 px-4 text-sm font-semibold text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
               >
-                Sign in
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </button>
             </div>
           </form>

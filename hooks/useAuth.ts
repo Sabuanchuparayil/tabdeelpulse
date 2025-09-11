@@ -9,6 +9,8 @@ interface AuthContextType {
   allUsers: User[];
   roles: Role[];
   setRoles: React.Dispatch<React.SetStateAction<Role[]>>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
   switchUser: (userId: number) => void;
   hasPermission: (permission: Permission) => boolean;
   addUser: (newUser: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit' | 'avatarUrl'>) => Promise<void>;
@@ -20,7 +22,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [activeUser, setActiveUser] = useState<User | null>(null);
+  const [activeUser, setActiveUser] = useState<User | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('tabdeel-pulse-user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (error) {
+      console.error("Failed to parse user from localStorage", error);
+      return null;
+    }
+  });
 
   const [roles, setRoles] = useState<Role[]>(() => {
     try {
@@ -34,6 +44,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return initialRoles;
   });
+  
+  const enhanceUser = useCallback((user: User): User => {
+    const role = roles.find(r => r.id === user.roleId);
+    return {
+        ...user,
+        permissions: role ? role.permissions : [],
+        financialLimit: role?.id === 'Administrator' ? 100000 : (role?.id === 'Manager' ? 50000 : 0),
+    };
+  }, [roles]);
 
   useEffect(() => {
     try {
@@ -43,14 +62,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [roles]);
 
-  const enhanceUser = useCallback((user: User): User => {
-    const role = roles.find(r => r.id === user.roleId);
-    return {
-        ...user,
-        permissions: role ? role.permissions : [],
-        financialLimit: role?.id === 'Administrator' ? 100000 : (role?.id === 'Manager' ? 50000 : 0),
-    };
-  }, [roles]);
+  useEffect(() => {
+    if (activeUser) {
+        localStorage.setItem('tabdeel-pulse-user', JSON.stringify(activeUser));
+    } else {
+        localStorage.removeItem('tabdeel-pulse-user');
+    }
+  }, [activeUser]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -62,29 +80,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const usersFromApi: User[] = await response.json();
         const enhancedUsers = usersFromApi.map(u => enhanceUser(u));
         setAllUsers(enhancedUsers);
-        
-        if (enhancedUsers.length > 0) {
-            // Prefer user with ID 1, but fall back to the first user if not found.
-            // This prevents the app from getting stuck on "Loading..."
-            const initialUser = enhancedUsers.find(u => u.id === 1) || enhancedUsers[0];
-            setActiveUser(initialUser);
-        } else {
-            console.error("No users found in the database.");
-        }
-
       } catch (error) {
         console.error("Error fetching users:", error);
       }
     };
     fetchUsers();
   }, [enhanceUser]);
+  
+  const login = async (email: string, password: string) => {
+      const response = await fetch(`${backendUrl}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed.');
+      }
+
+      const { user: loggedInUser } = await response.json();
+      const enhanced = enhanceUser(loggedInUser);
+      setActiveUser(enhanced);
+  };
+  
+  const logout = () => {
+    setActiveUser(null);
+  };
+
 
   const originalUser = useMemo(() => allUsers.find(u => u.id === 1) || null, [allUsers]);
 
   const switchUser = useCallback((userId: number) => {
     const userToSwitchTo = allUsers.find(u => u.id === userId);
-    setActiveUser(userToSwitchTo || null);
-  }, [allUsers]);
+    if(userToSwitchTo) {
+      setActiveUser(enhanceUser(userToSwitchTo));
+    }
+  }, [allUsers, enhanceUser]);
   
   const addUser = async (newUserData: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit' | 'avatarUrl'>) => {
     try {
@@ -156,6 +188,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       allUsers,
       roles,
       setRoles,
+      login,
+      logout,
       switchUser,
       hasPermission,
       addUser,
