@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import DashboardPage from '../dashboard/DashboardPage';
@@ -30,54 +30,74 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { user, originalUser, switchUser } = useAuth();
-  
-  useEffect(() => {
-    fetch(`${backendUrl}/api/tasks`)
-      .then(res => res.json())
-      .then(setTasks)
-      .catch(err => console.error("Failed to fetch tasks:", err));
-      
-    fetch(`${backendUrl}/api/announcements`)
-      .then(res => res.json())
-      .then(setAnnouncements)
-      .catch(err => console.error("Failed to fetch announcements:", err));
+
+  const fetchData = useCallback(async () => {
+    try {
+        const [tasksRes, announcementsRes] = await Promise.all([
+            fetch(`${backendUrl}/api/tasks`),
+            fetch(`${backendUrl}/api/announcements`)
+        ]);
+
+        if (!tasksRes.ok || !announcementsRes.ok) {
+            throw new Error('Failed to fetch data');
+        }
+
+        const tasksData = await tasksRes.json();
+        const announcementsData = await announcementsRes.json();
+        setTasks(tasksData);
+        setAnnouncements(announcementsData);
+    } catch (error) {
+        console.error("Failed to fetch initial data for layout", error);
+    }
   }, []);
-  
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'isCompleted'>) => {
-    const response = await fetch(`${backendUrl}/api/tasks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(taskData)
-    });
-    const newTask = await response.json();
-    setTasks(prev => [newTask, ...prev]);
+    try {
+        const response = await fetch(`${backendUrl}/api/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskData)
+        });
+        if (!response.ok) throw new Error('Failed to add task');
+        fetchData(); // Refetch data
+    } catch (error) {
+        console.error("Error adding task:", error);
+    }
   };
 
   const handleToggleTask = async (taskId: string) => {
-     setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
-      )
-    );
-    await fetch(`${backendUrl}/api/tasks/${taskId}/toggle`, { method: 'PUT' });
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    try {
+        const response = await fetch(`${backendUrl}/api/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isCompleted: !task.isCompleted })
+        });
+        if (!response.ok) throw new Error('Failed to toggle task');
+        fetchData(); // Refetch data
+    } catch (error) {
+        console.error("Error toggling task:", error);
+    }
   };
 
   const handleAddAnnouncement = async (announcementData: Omit<Announcement, 'id' | 'author' | 'timestamp'>) => {
     if (!user) return;
-    const newAnnouncementData = {
-        ...announcementData,
-        author: {
-            name: user.name,
-            avatarUrl: user.avatarUrl || ''
-        },
-    };
-    const response = await fetch(`${backendUrl}/api/announcements`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newAnnouncementData)
-    });
-    const newAnnouncement = await response.json();
-    setAnnouncements(prev => [newAnnouncement, ...prev]);
+     try {
+        const response = await fetch(`${backendUrl}/api/announcements`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...announcementData, author: { name: user.name, avatarUrl: user.avatarUrl || '' } })
+        });
+        if (!response.ok) throw new Error('Failed to add announcement');
+        fetchData(); // Refetch data
+    } catch (error) {
+        console.error("Error adding announcement:", error);
+    }
   };
 
 
@@ -106,7 +126,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
       case 'users':
         return <UserManagementPage />;
       case 'profile':
-        return <UserProfilePage user={user} />;
+        return <UserProfilePage />;
       case 'roles':
         return <RoleManagementPage />;
       case 'projects':

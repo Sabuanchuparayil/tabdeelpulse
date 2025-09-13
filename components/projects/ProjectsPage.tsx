@@ -1,6 +1,4 @@
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Project } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,48 +10,78 @@ import { backendUrl } from '../../config';
 const ProjectsPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const { hasPermission } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  useEffect(() => {
-    fetch(`${backendUrl}/api/projects`)
-      .then(res => res.json())
-      .then(data => setProjects(data));
+  const fetchProjects = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(`${backendUrl}/api/projects`);
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      const data = await response.json();
+      setProjects(data);
+    } catch(err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
   const handleAddProject = async (newProjectData: Omit<Project, 'id'>) => {
-    const response = await fetch(`${backendUrl}/api/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newProjectData)
-    });
-    const newProject = await response.json();
-    setProjects(prev => [...prev, newProject]);
-    setAddModalOpen(false);
+    try {
+      const response = await fetch(`${backendUrl}/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProjectData)
+      });
+      if (!response.ok) throw new Error('Failed to add project');
+      fetchProjects();
+      setAddModalOpen(false);
+    } catch (err) {
+      console.error(err);
+    }
   };
   
   const handleUpdateProject = async (updatedProject: Project) => {
-    const response = await fetch(`${backendUrl}/api/projects/${updatedProject.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedProject)
-    });
-    const returnedProject = await response.json();
-    setProjects(prev => prev.map(p => p.id === returnedProject.id ? returnedProject : p));
-    setEditModalOpen(false);
-    setSelectedProject(null);
+    try {
+      const response = await fetch(`${backendUrl}/api/projects/${updatedProject.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedProject)
+      });
+      if (!response.ok) throw new Error('Failed to update project');
+      fetchProjects();
+      setEditModalOpen(false);
+      setSelectedProject(null);
+    } catch (err) {
+      console.error(err);
+    }
   };
   
   const handleDeleteConfirm = async () => {
     if (selectedProject) {
-      await fetch(`${backendUrl}/api/projects/${selectedProject.id}`, { method: 'DELETE' });
-      setProjects(prev => prev.filter(p => p.id !== selectedProject.id));
+      try {
+        const response = await fetch(`${backendUrl}/api/projects/${selectedProject.id}`, {
+          method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Failed to delete project');
+        fetchProjects();
+        setDeleteModalOpen(false);
+        setSelectedProject(null);
+      } catch (err) {
+        console.error(err);
+      }
     }
-    setDeleteModalOpen(false);
-    setSelectedProject(null);
   };
 
 
@@ -88,64 +116,70 @@ const ProjectsPage: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-dark-card shadow-md rounded-lg overflow-hidden">
-        {/* Desktop Table View */}
-        <div className="overflow-x-auto hidden md:block">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Project Name</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Client</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-              {projects.map((proj) => (
-                <tr key={proj.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{proj.name}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{proj.client}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={proj.status} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-4">
+        {isLoading && <div className="p-4 text-center">Loading projects...</div>}
+        {error && <div className="p-4 text-center text-red-500">Error: {error}</div>}
+        {!isLoading && !error && (
+            <>
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Project Name</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Client</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
+                    {projects.map((proj) => (
+                        <tr key={proj.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{proj.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{proj.client}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <StatusBadge status={proj.status} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center space-x-4">
+                                {hasPermission('projects:update') && <button onClick={() => { setSelectedProject(proj); setEditModalOpen(true); }} className="text-primary hover:text-primary/80"><PencilIcon className="h-5 w-5"/></button>}
+                                {hasPermission('projects:delete') && <button onClick={() => { setSelectedProject(proj); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"><TrashIcon className="h-5 w-5"/></button>}
+                            </div>
+                        </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                {projects.map(proj => (
+                    <div key={proj.id} className="p-4">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <div className="text-sm font-medium text-gray-90atext-white">{proj.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
+                        </div>
+                        <StatusBadge status={proj.status} />
+                    </div>
+                    <div className="mt-4 flex justify-between items-center">
+                        <div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Client</div>
+                            <div className="text-sm text-gray-900 dark:text-gray-300">{proj.client}</div>
+                        </div>
+                        <div className="flex items-center space-x-4">
                         {hasPermission('projects:update') && <button onClick={() => { setSelectedProject(proj); setEditModalOpen(true); }} className="text-primary hover:text-primary/80"><PencilIcon className="h-5 w-5"/></button>}
                         {hasPermission('projects:delete') && <button onClick={() => { setSelectedProject(proj); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"><TrashIcon className="h-5 w-5"/></button>}
+                        </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-          {projects.map(proj => (
-            <div key={proj.id} className="p-4">
-              <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{proj.name}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
-                  </div>
-                  <StatusBadge status={proj.status} />
-              </div>
-              <div className="mt-4 flex justify-between items-center">
-                <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Client</div>
-                    <div className="text-sm text-gray-900 dark:text-gray-300">{proj.client}</div>
+                    </div>
+                ))}
                 </div>
-                <div className="flex items-center space-x-4">
-                  {hasPermission('projects:update') && <button onClick={() => { setSelectedProject(proj); setEditModalOpen(true); }} className="text-primary hover:text-primary/80"><PencilIcon className="h-5 w-5"/></button>}
-                  {hasPermission('projects:delete') && <button onClick={() => { setSelectedProject(proj); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"><TrashIcon className="h-5 w-5"/></button>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            </>
+        )}
       </div>
 
       <AddProjectModal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} onSave={handleAddProject} />

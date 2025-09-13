@@ -1,9 +1,6 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-// FIX: Added Project type for fetched data.
 import type { ServiceJob, Project } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
-// FIX: Removed incorrect import of mockProjects as it is not exported.
-import { backendUrl } from '../../config';
 
 const mockTechnicians = [
     { id: 1, name: 'NOUMAN', avatarUrl: 'https://picsum.photos/seed/nouman/40/40' },
@@ -15,23 +12,18 @@ interface CreateJobModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddJob: (job: Omit<ServiceJob, 'id' | 'status'>) => void;
+  projects: Project[];
 }
 
-const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJob }) => {
+const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJob, projects }) => {
     const [title, setTitle] = useState('');
     const [project, setProject] = useState('');
     const [technicianName, setTechnicianName] = useState('');
     const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
     const [errors, setErrors] = useState<{ title?: string; project?: string; technicianName?: string; }>({});
-    // FIX: Add state to hold fetched projects.
-    const [projects, setProjects] = useState<Project[]>([]);
     
     useEffect(() => {
         if (isOpen) {
-            // FIX: Fetch projects from the API when the modal is opened.
-            fetch(`${backendUrl}/api/projects`)
-                .then(res => res.json())
-                .then(setProjects);
             setTitle('');
             setProject('');
             setTechnicianName('');
@@ -88,7 +80,6 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJ
                                 <label htmlFor="project" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Project</label>
                                 <select id="project" value={project} onChange={e => setProject(e.target.value)} className={`mt-1 block w-full pl-3 pr-10 py-2 text-base ${errors.project ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md`}>
                                     <option value="" disabled>Select a project</option>
-                                    {/* FIX: Use fetched projects state instead of mock data. */}
                                     {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                                 </select>
                                 {errors.project && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.project}</p>}

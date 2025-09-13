@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import KpiCard from './KpiCard';
 import FinancialChart from './FinancialChart';
 import ActivityFeed from './ActivityFeed';
-// FIX: Import types for fetched data instead of mock data from mockData.ts
 import type { Kpi, FinancialDataPoint, ActivityItem, Announcement, PaymentInstruction, ServiceJob, Collection } from '../../types';
 import { mockThreads } from '../../data/mockData';
 import { MegaphoneIcon } from '../icons/Icons';
@@ -14,16 +13,50 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements }) => {
-    // FIX: Add state and useEffect to fetch data for KPIs instead of using static mock data.
     const [collections, setCollections] = useState<Collection[]>([]);
     const [instructions, setInstructions] = useState<PaymentInstruction[]>([]);
     const [serviceJobs, setServiceJobs] = useState<ServiceJob[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch(`${backendUrl}/api/finance/collections`).then(res => res.json()).then(setCollections).catch(err => console.error("Failed to fetch collections:", err));
-        fetch(`${backendUrl}/api/finance/instructions`).then(res => res.json()).then(setInstructions).catch(err => console.error("Failed to fetch instructions:", err));
-        fetch(`${backendUrl}/api/service-jobs`).then(res => res.json()).then(setServiceJobs).catch(err => console.error("Failed to fetch service jobs:", err));
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const [colRes, instRes, jobRes] = await Promise.all([
+                    fetch(`${backendUrl}/api/finance/collections`),
+                    fetch(`${backendUrl}/api/finance/payment-instructions`),
+                    fetch(`${backendUrl}/api/service-jobs`),
+                ]);
+
+                if (!colRes.ok || !instRes.ok || !jobRes.ok) {
+                    throw new Error('Failed to fetch dashboard data');
+                }
+
+                const colData = await colRes.json();
+                const instData = await instRes.json();
+                const jobData = await jobRes.json();
+
+                setCollections(colData);
+                setInstructions(instData);
+                setServiceJobs(jobData);
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
     }, []);
+
+    if (loading) {
+        return <div className="text-center p-8">Loading dashboard...</div>;
+    }
+
+    if (error) {
+        return <div className="text-center p-8 text-red-500">Error: {error}</div>;
+    }
 
     // Calculate KPIs dynamically
     const totalCollections = collections.reduce((sum, c) => sum + c.amount, 0);

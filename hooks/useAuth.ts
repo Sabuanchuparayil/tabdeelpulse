@@ -16,6 +16,7 @@ interface AuthContextType {
   addUser: (newUser: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit' | 'avatarUrl'>) => Promise<void>;
   updateUser: (updatedUser: User) => Promise<void>;
   deleteUser: (userId: number) => Promise<void>;
+  changePassword: (userId: number, currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -173,6 +174,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error("Error deleting user:", error);
     }
   };
+  
+  const changePassword = async (userId: number, currentPassword: string, newPassword: string) => {
+    const response = await fetch(`${backendUrl}/api/users/${userId}/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to change password.');
+    }
+  };
 
   const hasPermission = useMemo(() => (permission: Permission): boolean => {
     if (!activeUser) return false;
@@ -194,7 +208,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       hasPermission,
       addUser,
       updateUser,
-      deleteUser
+      deleteUser,
+      changePassword,
   };
 
   return React.createElement(AuthContext.Provider, { value }, children);

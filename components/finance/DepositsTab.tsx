@@ -1,7 +1,5 @@
-
-
-import React, { useState, useMemo, useEffect } from 'react';
-import { Deposit } from '../../types';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Deposit, AccountHead } from '../../types';
 import { PlusIcon, ArrowDownTrayIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import LogDepositModal from './LogDepositModal';
 import { backendUrl } from '../../config';
@@ -11,16 +9,40 @@ type SortableKeys = 'date' | 'amount';
 
 const DepositsTab: React.FC = () => {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: SortDirection } | null>({ key: 'date', direction: 'descending' });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetch(`${backendUrl}/api/finance/deposits`)
-      .then(res => res.json())
-      .then(setDeposits);
+  const fetchDeposits = useCallback(async () => {
+    try {
+        setIsLoading(true);
+        setError(null);
+        const [depositsRes, accountsRes] = await Promise.all([
+            fetch(`${backendUrl}/api/finance/deposits`),
+            fetch(`${backendUrl}/api/account-heads`),
+        ]);
+        if (!depositsRes.ok || !accountsRes.ok) throw new Error('Failed to fetch data');
+
+        const depositsData = await depositsRes.json();
+        const accountsData = await accountsRes.json();
+        
+        setDeposits(depositsData);
+        setAccountHeads(accountsData);
+    } catch (err: any) {
+        setError(err.message);
+    } finally {
+        setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchDeposits();
+  }, [fetchDeposits]);
 
   const sortedDeposits = useMemo(() => {
     let sortableItems = [...deposits];
@@ -52,14 +74,19 @@ const DepositsTab: React.FC = () => {
       setSortConfig({ key, direction });
   };
   
-   const handleAddDeposit = (newDepositData: Omit<Deposit, 'id' | 'status'>) => {
-    const newDeposit: Deposit = {
-      ...newDepositData,
-      id: `D-${Date.now().toString().slice(-4)}`,
-      status: 'Pending',
-    };
-    setDeposits(prev => [newDeposit, ...prev]);
-    setIsModalOpen(false);
+   const handleAddDeposit = async (newDepositData: Omit<Deposit, 'id' | 'status'>) => {
+    try {
+        const response = await fetch(`${backendUrl}/api/finance/deposits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newDepositData),
+        });
+        if (!response.ok) throw new Error('Failed to add deposit');
+        fetchDeposits();
+        setIsModalOpen(false);
+    } catch(err) {
+        console.error(err);
+    }
   };
 
   const handleExport = () => {
@@ -136,65 +163,72 @@ const DepositsTab: React.FC = () => {
         </button>
       </div>
       <div className="bg-white dark:bg-dark-card shadow-md rounded-lg overflow-hidden">
-        {/* Desktop Table View */}
-        <div className="overflow-x-auto hidden md:block">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Deposit ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Account Head</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <button onClick={() => requestSort('amount')} className="flex items-center focus:outline-none">
-                        Amount (AED)
-                        <SortIndicator columnKey="amount" />
-                    </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <button onClick={() => requestSort('date')} className="flex items-center focus:outline-none">
-                        Date
-                        <SortIndicator columnKey="date" />
-                    </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedDeposits.map(dep => (
-                <tr key={dep.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{dep.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{dep.accountHead}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">{dep.amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(dep.date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={dep.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Mobile Card View */}
-        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-          {sortedDeposits.map(dep => (
-            <div key={dep.id} className="p-4">
-              <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{dep.accountHead}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">ID: {dep.id}</div>
-                  </div>
-                  <StatusBadge status={dep.status} />
-              </div>
-              <div className="mt-2 flex justify-between items-baseline">
-                <div className="text-lg font-semibold text-gray-900 dark:text-white">{dep.amount.toFixed(2)} AED</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(dep.date).toLocaleDateString()}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {isLoading && <div className="p-4 text-center">Loading deposits...</div>}
+        {error && <div className="p-4 text-center text-red-500">Error: {error}</div>}
+        {!isLoading && !error && (
+            <>
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Deposit ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Account Head</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            <button onClick={() => requestSort('amount')} className="flex items-center focus:outline-none">
+                                Amount (AED)
+                                <SortIndicator columnKey="amount" />
+                            </button>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            <button onClick={() => requestSort('date')} className="flex items-center focus:outline-none">
+                                Date
+                                <SortIndicator columnKey="date" />
+                            </button>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
+                    {sortedDeposits.map(dep => (
+                        <tr key={dep.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{dep.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{dep.accountHead}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">{dep.amount.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(dep.date).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={dep.status} /></td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+                </div>
+                
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                {sortedDeposits.map(dep => (
+                    <div key={dep.id} className="p-4">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{dep.accountHead}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">ID: {dep.id}</div>
+                        </div>
+                        <StatusBadge status={dep.status} />
+                    </div>
+                    <div className="mt-2 flex justify-between items-baseline">
+                        <div className="text-lg font-semibold text-gray-900 dark:text-white">{dep.amount.toFixed(2)} AED</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(dep.date).toLocaleDateString()}</div>
+                    </div>
+                    </div>
+                ))}
+                </div>
+            </>
+        )}
       </div>
       <LogDepositModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddDeposit={handleAddDeposit}
+        accountHeads={accountHeads}
       />
     </div>
   );

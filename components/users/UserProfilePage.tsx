@@ -1,27 +1,33 @@
-
-import React, { useState, useRef, FormEvent } from 'react';
-import type { User } from '../../types';
+import React, { useState, useRef, FormEvent, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import { CameraIcon } from '../icons/Icons';
 
-interface UserProfilePageProps {
-    user: User;
-}
+const UserProfilePage: React.FC = () => {
+    const { user, updateUser, changePassword } = useAuth();
 
-const UserProfilePage: React.FC<UserProfilePageProps> = ({ user }) => {
-    const [name, setName] = useState(user.name);
-    const [mobile, setMobile] = useState(user.mobile || '');
-    const [avatarPreview, setAvatarPreview] = useState(user.avatarUrl);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [mobile, setMobile] = useState('');
+    const [avatarPreview, setAvatarPreview] = useState<string | undefined>();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [infoSuccess, setInfoSuccess] = useState('');
-    const [infoErrors, setInfoErrors] = useState<{ name?: string; mobile?: string }>({});
-
+    const [infoErrors, setInfoErrors] = useState<{ name?: string; email?: string; mobile?: string; general?: string }>({});
 
     // Password change state
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
-    const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string; confirm?: string; }>({});
+    const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string; confirm?: string; api?: string; }>({});
     const [passwordSuccess, setPasswordSuccess] = useState('');
+
+    useEffect(() => {
+        if (user) {
+            setName(user.name);
+            setEmail(user.email);
+            setMobile(user.mobile || '');
+            setAvatarPreview(user.avatarUrl);
+        }
+    }, [user]);
 
     const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
@@ -35,9 +41,14 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user }) => {
     };
 
     const validateInfo = () => {
-        const errors: { name?: string; mobile?: string } = {};
+        const errors: { name?: string; email?: string; mobile?: string } = {};
         if (!name.trim()) {
             errors.name = 'Full Name is required.';
+        }
+        if (!email.trim()) {
+            errors.email = 'Email address is required.';
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            errors.email = 'Please enter a valid email address.';
         }
         if (mobile && !/^\+?[0-9\s-]{10,15}$/.test(mobile)) {
             errors.mobile = 'Please enter a valid mobile number.';
@@ -46,15 +57,26 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user }) => {
         return Object.keys(errors).length === 0;
     };
 
-    const handleInfoSubmit = (e: React.FormEvent) => {
+    const handleInfoSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setInfoSuccess('');
-        if (!validateInfo()) return;
+        setInfoErrors({});
+        if (!validateInfo() || !user) return;
 
-        // Mock API call
-        console.log("Saving user info:", { name, mobile, avatar: avatarPreview });
-        setInfoSuccess("Profile information updated successfully!");
-        setTimeout(() => setInfoSuccess(''), 3000);
+        try {
+            await updateUser({
+                ...user,
+                name,
+                email,
+                mobile,
+                avatarUrl: avatarPreview,
+            });
+            setInfoSuccess("Profile information updated successfully!");
+            setTimeout(() => setInfoSuccess(''), 3000);
+        } catch (err) {
+            console.error("Failed to update profile:", err);
+            setInfoErrors({ general: 'Failed to save changes. Please try again later.' });
+        }
     };
     
     const validatePassword = () => {
@@ -77,22 +99,30 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user }) => {
     };
 
 
-    const handlePasswordSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const handlePasswordSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setPasswordSuccess('');
-        if(!validatePassword()) return;
+        setPasswordErrors({});
+        if(!validatePassword() || !user) return;
 
-        // Mock API call
-        console.log("Changing password...");
-        setPasswordSuccess("Password updated successfully!");
-        
-        // Clear fields
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmNewPassword('');
-        
-        setTimeout(() => setPasswordSuccess(''), 3000); // Clear success message after 3s
+        try {
+            await changePassword(user.id, currentPassword, newPassword);
+            setPasswordSuccess("Password updated successfully!");
+            
+            // Clear fields
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+            
+            setTimeout(() => setPasswordSuccess(''), 3000); // Clear success message after 3s
+        } catch (err: any) {
+             setPasswordErrors({ api: err.message || 'An unexpected error occurred.' });
+        }
     };
+
+    if (!user) {
+        return <div className="text-center p-8">Loading profile...</div>;
+    }
 
     const FormRow: React.FC<{ label: string, children: React.ReactNode, error?: string }> = ({ label, children, error }) => (
         <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:py-4">
@@ -158,14 +188,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user }) => {
                                 <FormRow label="Full Name" error={infoErrors.name}>
                                     <TextInput type="text" value={name} onChange={(e) => setName(e.target.value)} required hasError={!!infoErrors.name} />
                                 </FormRow>
-                                 <FormRow label="Email Address">
-                                    <TextInput type="email" value={user.email} disabled className="disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500" />
+                                 <FormRow label="Email Address" error={infoErrors.email}>
+                                    <TextInput type="email" value={email} onChange={e => setEmail(e.target.value)} required hasError={!!infoErrors.email} />
                                 </FormRow>
                                 <FormRow label="Mobile Number" error={infoErrors.mobile}>
                                     <TextInput type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+971 50 123 4567" hasError={!!infoErrors.mobile} />
                                 </FormRow>
                             </div>
                             {infoSuccess && <p className="mt-4 text-sm text-green-600 dark:text-green-400">{infoSuccess}</p>}
+                            {infoErrors.general && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{infoErrors.general}</p>}
                         </div>
                         <div className="px-4 py-3 bg-gray-50 dark:bg-dark-card/50 text-right sm:px-6 rounded-b-lg">
                             <button
@@ -196,7 +227,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user }) => {
                                     <TextInput type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required autoComplete="new-password" hasError={!!passwordErrors.confirm} />
                                 </FormRow>
                             </div>
-                             {passwordSuccess && <p className="mt-4 text-sm text-green-600 dark:text-green-400">{passwordSuccess}</p>}
+                            {passwordErrors.api && <p className="mt-4 text-sm text-red-600 dark:text-red-400 text-center">{passwordErrors.api}</p>}
+                            {passwordSuccess && <p className="mt-4 text-sm text-green-600 dark:text-green-400">{passwordSuccess}</p>}
                         </div>
                         <div className="px-4 py-3 bg-gray-50 dark:bg-dark-card/50 text-right sm:px-6 rounded-b-lg">
                             <button

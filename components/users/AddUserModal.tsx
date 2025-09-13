@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent, useEffect } from 'react';
 import type { User, UserRole, UserStatus, Role } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
@@ -54,8 +53,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      // FIX: Removed `avatarUrl` from the call to onAddUser as it's not an expected property.
-      // The `avatarUrl` is generated in the `handleAddUser` function in UserManagementPage.
       onAddUser({ 
         name, 
         email, 

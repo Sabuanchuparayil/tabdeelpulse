@@ -1,7 +1,5 @@
-
-
-import React, { useState, useMemo, useEffect } from 'react';
-import { Collection } from '../../types';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Collection, Project } from '../../types';
 import { PlusIcon, ArrowDownTrayIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import LogCollectionModal from './LogCollectionModal';
 import { backendUrl } from '../../config';
@@ -11,16 +9,40 @@ type SortableKeys = 'date' | 'amount';
 
 const CollectionsTab: React.FC = () => {
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: SortDirection } | null>({ key: 'date', direction: 'descending' });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetch(`${backendUrl}/api/finance/collections`)
-      .then(res => res.json())
-      .then(setCollections);
+  const fetchCollections = useCallback(async () => {
+    try {
+        setIsLoading(true);
+        setError(null);
+        const [collectionsRes, projectsRes] = await Promise.all([
+            fetch(`${backendUrl}/api/finance/collections`),
+            fetch(`${backendUrl}/api/projects`),
+        ]);
+        if (!collectionsRes.ok || !projectsRes.ok) throw new Error('Failed to fetch data');
+        
+        const collectionsData = await collectionsRes.json();
+        const projectsData = await projectsRes.json();
+        
+        setCollections(collectionsData);
+        setProjects(projectsData);
+    } catch (err: any) {
+        setError(err.message);
+    } finally {
+        setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCollections();
+  }, [fetchCollections]);
 
   const sortedCollections = useMemo(() => {
     let sortableItems = [...collections];
@@ -52,14 +74,19 @@ const CollectionsTab: React.FC = () => {
       setSortConfig({ key, direction });
   };
   
-  const handleAddCollection = (newCollectionData: Omit<Collection, 'id' | 'status'>) => {
-    const newCollection: Collection = {
-      ...newCollectionData,
-      id: `C-${Date.now().toString().slice(-4)}`,
-      status: 'Collected',
-    };
-    setCollections(prev => [newCollection, ...prev]);
-    setIsModalOpen(false);
+  const handleAddCollection = async (newCollectionData: Omit<Collection, 'id' | 'status'>) => {
+    try {
+        const response = await fetch(`${backendUrl}/api/finance/collections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCollectionData),
+        });
+        if (!response.ok) throw new Error('Failed to add collection');
+        fetchCollections();
+        setIsModalOpen(false);
+    } catch(err) {
+        console.error(err);
+    }
   };
 
 
@@ -141,87 +168,94 @@ const CollectionsTab: React.FC = () => {
         </button>
       </div>
       <div className="bg-white dark:bg-dark-card shadow-md rounded-lg overflow-hidden">
-        {/* Desktop Table View */}
-        <div className="overflow-x-auto hidden md:block">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Collection ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Project / Payer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <button onClick={() => requestSort('amount')} className="flex items-center focus:outline-none">
-                        Amount (AED)
-                        <SortIndicator columnKey="amount" />
-                    </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Outstanding Amount (AED)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <button onClick={() => requestSort('date')} className="flex items-center focus:outline-none">
-                        Date
-                        <SortIndicator columnKey="date" />
-                    </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedCollections.map(col => (
-                <tr key={col.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{col.id}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{col.type}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-gray-300">{col.project}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{col.payer}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">{col.amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 dark:text-red-400">{col.outstandingAmount?.toFixed(2) ?? 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(col.date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={col.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {isLoading && <div className="p-4 text-center">Loading collections...</div>}
+        {error && <div className="p-4 text-center text-red-500">Error: {error}</div>}
+        {!isLoading && !error && (
+            <>
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Collection ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Project / Payer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            <button onClick={() => requestSort('amount')} className="flex items-center focus:outline-none">
+                                Amount (AED)
+                                <SortIndicator columnKey="amount" />
+                            </button>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Outstanding Amount (AED)</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            <button onClick={() => requestSort('date')} className="flex items-center focus:outline-none">
+                                Date
+                                <SortIndicator columnKey="date" />
+                            </button>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-gray-700">
+                    {sortedCollections.map(col => (
+                        <tr key={col.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{col.id}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{col.type}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 dark:text-gray-300">{col.project}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{col.payer}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">{col.amount.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 dark:text-red-400">{col.outstandingAmount?.toFixed(2) ?? 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(col.date).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={col.status} /></td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+                </div>
 
-        {/* Mobile Card View */}
-        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedCollections.map(col => (
-              <div key={col.id} className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{col.project}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{col.payer}</div>
-                  </div>
-                  <StatusBadge status={col.status} />
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                    {sortedCollections.map(col => (
+                    <div key={col.id} className="p-4">
+                        <div className="flex justify-between items-start">
+                        <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{col.project}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{col.payer}</div>
+                        </div>
+                        <StatusBadge status={col.status} />
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-4">
+                        <div>
+                            <div className="text-xs text-gray-500">Amount</div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{col.amount.toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Outstanding</div>
+                            <div className="text-sm font-semibold text-red-600 dark:text-red-400">{col.outstandingAmount?.toFixed(2) ?? 'N/A'}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Date</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(col.date).toLocaleDateString()}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-gray-500">Type</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{col.type} ({col.id})</div>
+                        </div>
+                        </div>
+                    </div>
+                    ))}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-gray-500">Amount</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{col.amount.toFixed(2)}</div>
-                  </div>
-                   <div>
-                    <div className="text-xs text-gray-500">Outstanding</div>
-                    <div className="text-sm font-semibold text-red-600 dark:text-red-400">{col.outstandingAmount?.toFixed(2) ?? 'N/A'}</div>
-                  </div>
-                   <div>
-                    <div className="text-xs text-gray-500">Date</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(col.date).toLocaleDateString()}</div>
-                  </div>
-                   <div>
-                    <div className="text-xs text-gray-500">Type</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{col.type} ({col.id})</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-        </div>
+            </>
+        )}
       </div>
        <LogCollectionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddCollection={handleAddCollection}
+        projects={projects}
       />
     </div>
   );

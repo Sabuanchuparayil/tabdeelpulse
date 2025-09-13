@@ -16,7 +16,6 @@ export const initialRoles: Role[] = [
     id: 'Manager',
     name: 'Manager',
     description: 'Can manage projects, assign jobs, and oversee team members.',
-    // FIX: Replaced invalid 'projects:read' permission with 'projects:update' which is a valid permission.
     permissions: ['users:read', 'users:update', 'jobs:assign', 'projects:update', 'announcements:create'],
   },
   {
