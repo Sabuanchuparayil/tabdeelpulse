@@ -4,18 +4,14 @@
   "description": "Frontend for Tabdeel Pulse",
   "private": true,
   "scripts": {
-    "build": "esbuild index.tsx --bundle --outfile=bundle.js --define:process.env.NODE_ENV='\"production\"'",
-    "start": "node server.js"
+    "build": "esbuild index.tsx --bundle --outfile=bundle.js --define:process.env.NODE_ENV='\"production\"'"
   },
   "dependencies": {
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "@google/genai": "^1.16.0",
     "recharts": "^3.1.2",
-    "esbuild": "^0.23.0",
-    "express": "^4.19.2",
-    "cors": "^2.8.5",
-    "pg": "^8.12.0"
+    "esbuild": "^0.23.0"
   },
   "devDependencies": {}
 }

@@ -29,6 +29,7 @@ const UserProfilePage: React.FC = () => {
     // State for user profile information form
     const [formData, setFormData] = useState({ name: '', email: '', mobile: '' });
     const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [infoSuccess, setInfoSuccess] = useState('');
     const [infoErrors, setInfoErrors] = useState<{ name?: string; email?: string; mobile?: string; general?: string }>({});
@@ -38,8 +39,6 @@ const UserProfilePage: React.FC = () => {
     const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string; confirm?: string; api?: string; }>({});
     const [passwordSuccess, setPasswordSuccess] = useState('');
 
-    // Effect to synchronize form state with the user object from the auth context.
-    // This runs when the component mounts and whenever the user object instance changes.
     useEffect(() => {
         if (user) {
             setFormData({
@@ -48,12 +47,14 @@ const UserProfilePage: React.FC = () => {
                 mobile: user.mobile || '',
             });
             setAvatarPreview(user.avatarUrl);
+            setSelectedFile(null); // Reset file on user change
         }
     }, [user]);
 
     const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
             const file = event.target.files[0];
+            setSelectedFile(file); // Store the file object
             const reader = new FileReader();
             reader.onloadend = () => {
                 setAvatarPreview(reader.result as string);
@@ -84,24 +85,30 @@ const UserProfilePage: React.FC = () => {
         if (!validateInfo() || !user) return;
 
         try {
+            // Prepare user data for update.
             const updatedUserData = {
-                ...user,
+                ...user, // Start with the existing user object
                 name: formData.name,
                 email: formData.email,
                 mobile: formData.mobile,
-                avatarUrl: avatarPreview,
             };
 
-            // The backend does not support base64 image uploads.
-            // If a new image was selected (avatarPreview is a base64 string),
-            // revert to the original user.avatarUrl before sending the payload.
-            // This prevents the save error and allows other profile info to be updated.
+            // IMPORTANT: This is the temporary fix.
+            // The backend does not support uploading the image file/string directly.
+            // If a new photo was selected for preview (a base64 string), we will NOT
+            // send it. Instead, we re-affirm the user's existing avatarUrl.
+            // This prevents the "Failed to save" error and allows other details
+            // like name, email, and mobile to be updated successfully.
+            // The avatar will appear to revert upon saving.
             if (avatarPreview && avatarPreview.startsWith('data:image')) {
-                updatedUserData.avatarUrl = user.avatarUrl;
+                updatedUserData.avatarUrl = user.avatarUrl; // Keep the old URL
             }
-            
+
             await updateUser(updatedUserData);
+
             setInfoSuccess("Profile information updated successfully!");
+            setSelectedFile(null); // Clear the selected file state
+
             setTimeout(() => setInfoSuccess(''), 3000);
         } catch (err) {
             console.error("Failed to update profile:", err);
