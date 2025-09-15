@@ -7,6 +7,15 @@ import { backendUrl } from '../../config';
 type SortDirection = 'ascending' | 'descending';
 type SortableKeys = 'date' | 'amount';
 
+// Define a more specific type for the data coming from the modal
+type NewDepositData = {
+    accountHeadId: string;
+    amount: number;
+    date: string;
+    document?: File;
+};
+
+
 const DepositsTab: React.FC = () => {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
@@ -23,13 +32,19 @@ const DepositsTab: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        // Fetch account heads for the modal, but clear deposits data for go-live
-        const accountsRes = await fetch(`${backendUrl}/api/account-heads`);
-        if (!accountsRes.ok) throw new Error('Failed to fetch account heads');
-        const accountsData = await accountsRes.json();
-        setAccountHeads(accountsData);
+        // Fetch both deposits and account heads for the modal
+        const [depositsRes, accountsRes] = await Promise.all([
+             fetch(`${backendUrl}/api/finance/deposits`),
+             fetch(`${backendUrl}/api/account-heads`)
+        ]);
 
-        setDeposits([]); // Clear sample data
+        if (!depositsRes.ok) throw new Error('Failed to fetch deposits');
+        if (!accountsRes.ok) throw new Error('Failed to fetch account heads');
+        
+        const depositsData = await depositsRes.json();
+        const accountsData = await accountsRes.json();
+        setDeposits(depositsData);
+        setAccountHeads(accountsData);
 
     } catch (err: any) {
         setError(err.message);
@@ -72,10 +87,10 @@ const DepositsTab: React.FC = () => {
       setSortConfig({ key, direction });
   };
   
-   const handleAddDeposit = async (newDepositData: Omit<Deposit, 'id' | 'status'>) => {
+   const handleAddDeposit = async (newDepositData: NewDepositData) => {
     try {
         const formData = new FormData();
-        formData.append('accountHead', newDepositData.accountHead);
+        formData.append('accountHeadId', newDepositData.accountHeadId);
         formData.append('amount', String(newDepositData.amount));
         formData.append('date', newDepositData.date);
         if (newDepositData.document) {

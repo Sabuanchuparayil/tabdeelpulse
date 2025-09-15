@@ -134,14 +134,18 @@ const MessagesPage: React.FC = () => {
                         <PlusIcon className="h-6 w-6" />
                     </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                <div className="flex-1 overflow-y-auto p-2">
                     {isLoading && <div className="p-4 text-center text-gray-500">Loading...</div>}
                     {error && <div className="p-4 text-center text-red-500">{error}</div>}
                     {!isLoading && !error && threads.length === 0 && <div className="p-4 text-center text-gray-500">No conversations yet.</div>}
-                    {!isLoading && !error && threads.map(thread => (
-                        <ThreadListItem key={thread.id} thread={thread} isActive={String(thread.id) === selectedThreadId} />
-                    ))}
-                </ul>
+                    {!isLoading && !error && threads.length > 0 && (
+                        <ul className="space-y-1">
+                            {threads.map(thread => (
+                                <ThreadListItem key={thread.id} thread={thread} isActive={String(thread.id) === selectedThreadId} />
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </div>
 
             {/* Right Panel: Chat View */}

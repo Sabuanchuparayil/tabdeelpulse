@@ -25,16 +25,10 @@ const PaymentInstructionsTab: React.FC = () => {
             setIsLoading(true);
             setError(null);
             
-            // NOTE: The following data fetching is temporarily disabled to clear the view
-            // of demo data for the go-live. The backend database should be cleared,
-            // and then this code can be uncommented to show live data.
-            /*
             const response = await fetch(`${backendUrl}/api/finance/payment-instructions`);
             if (!response.ok) throw new Error('Failed to fetch payment instructions');
             const data = await response.json();
             setInstructions(data);
-            */
-           setInstructions([]); // Clear sample data
             
         } catch (err: any) {
             setError(err.message);
@@ -110,11 +104,14 @@ const PaymentInstructionsTab: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...data, submittedBy: user.name }),
             });
-            if (!response.ok) throw new Error('Failed to add instruction');
+            if (!response.ok) {
+                throw new Error('Failed to add instruction');
+            }
             fetchInstructions();
             setIsModalOpen(false);
         } catch (err) {
             console.error(err);
+            alert('Failed to add instruction');
         }
     };
 

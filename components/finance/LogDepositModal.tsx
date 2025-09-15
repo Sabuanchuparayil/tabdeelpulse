@@ -1,25 +1,25 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import type { Deposit, AccountHead } from '../../types';
+import type { AccountHead } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
 import DocumentUpload from './DocumentUpload';
 
 interface LogDepositModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddDeposit: (deposit: Omit<Deposit, 'id' | 'status'>) => void;
+  onAddDeposit: (deposit: { accountHeadId: string; amount: number; date: string; document?: File; }) => void;
   accountHeads: AccountHead[];
 }
 
 const LogDepositModal: React.FC<LogDepositModalProps> = ({ isOpen, onClose, onAddDeposit, accountHeads }) => {
-    const [accountHead, setAccountHead] = useState('');
+    const [accountHeadId, setAccountHeadId] = useState('');
     const [amount, setAmount] = useState<number | ''>('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [document, setDocument] = useState<File | null>(null);
-    const [errors, setErrors] = useState<{ accountHead?: string; amount?: string; date?: string; }>({});
+    const [errors, setErrors] = useState<{ accountHeadId?: string; amount?: string; date?: string; }>({});
 
     useEffect(() => {
         if (isOpen) {
-            setAccountHead('');
+            setAccountHeadId('');
             setAmount('');
             setDate(new Date().toISOString().split('T')[0]);
             setDocument(null);
@@ -31,7 +31,7 @@ const LogDepositModal: React.FC<LogDepositModalProps> = ({ isOpen, onClose, onAd
 
     const validate = () => {
         const newErrors: typeof errors = {};
-        if (!accountHead) newErrors.accountHead = 'Account Head is required.';
+        if (!accountHeadId) newErrors.accountHeadId = 'Account Head is required.';
         if (!amount || amount <= 0) newErrors.amount = 'A valid amount is required.';
         if (!date) newErrors.date = 'Deposit date is required.';
         setErrors(newErrors);
@@ -42,7 +42,7 @@ const LogDepositModal: React.FC<LogDepositModalProps> = ({ isOpen, onClose, onAd
         e.preventDefault();
         if (validate()) {
             onAddDeposit({
-                accountHead,
+                accountHeadId,
                 amount: Number(amount),
                 date,
                 document: document ?? undefined,
@@ -65,11 +65,11 @@ const LogDepositModal: React.FC<LogDepositModalProps> = ({ isOpen, onClose, onAd
                         <div className="mt-6 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                              <div>
                                 <label htmlFor="deposit-account-head" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Head</label>
-                                <select id="deposit-account-head" value={accountHead} onChange={e => setAccountHead(e.target.value)} className={`mt-1 block w-full pl-3 pr-10 py-2 text-base ${errors.accountHead ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md`}>
+                                <select id="deposit-account-head" value={accountHeadId} onChange={e => setAccountHeadId(e.target.value)} className={`mt-1 block w-full pl-3 pr-10 py-2 text-base ${errors.accountHeadId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md`}>
                                     <option value="" disabled>Select an account</option>
-                                    {activeAccountHeads.map(acc => <option key={acc.id} value={acc.name}>{acc.name} ({acc.bankName})</option>)}
+                                    {activeAccountHeads.map(acc => <option key={acc.id} value={acc.id}>{acc.name} ({acc.bankName})</option>)}
                                 </select>
-                                {errors.accountHead && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.accountHead}</p>}
+                                {errors.accountHeadId && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.accountHeadId}</p>}
                             </div>
                             <div>
                                 <label htmlFor="deposit-amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount (AED)</label>

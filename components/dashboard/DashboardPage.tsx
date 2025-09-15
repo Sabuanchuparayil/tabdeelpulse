@@ -31,21 +31,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements
                 setLoading(true);
                 setError(null);
                 
-                // NOTE: The following data fetching is temporarily disabled to clear the dashboard
-                // of demo data for the go-live. The backend database should be cleared,
-                // and then this code can be uncommented to show live data.
-
-                /*
                 const results = await Promise.allSettled([
                     fetch(`${backendUrl}/api/finance/collections`),
                     fetch(`${backendUrl}/api/finance/payment-instructions`),
                     fetch(`${backendUrl}/api/service-jobs`),
-                    fetch(`${backendUrl}/api/finance/overview`),
-                    fetch(`${backendUrl}/api/activity`),
-                    fetch(`${backendUrl}/api/messages/unread-count`),
+                    // The following endpoints are placeholders and may fail until implemented
+                    // fetch(`${backendUrl}/api/finance/overview`),
+                    // fetch(`${backendUrl}/api/activity`),
+                    // fetch(`${backendUrl}/api/messages/unread-count`),
                 ]);
 
-                const [colRes, instRes, jobRes, finRes, actRes, msgRes] = results;
+                const [colRes, instRes, jobRes] = results;
 
                 if (colRes.status === 'fulfilled' && colRes.value.ok) {
                     const colData = await colRes.value.json();
@@ -68,33 +64,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements
                     console.warn('Dashboard Warning: Failed to fetch service jobs data.', jobRes.status === 'rejected' ? jobRes.reason : jobRes.value.statusText);
                 }
 
-                if (finRes.status === 'fulfilled' && finRes.value.ok) {
-                    const finData = await finRes.value.json();
-                    setFinancialData(finData);
-                } else {
-                     console.warn('Dashboard Warning: Failed to fetch financial overview data.', finRes.status === 'rejected' ? finRes.reason : finRes.value.statusText);
-                }
-
-                if (actRes.status === 'fulfilled' && actRes.value.ok) {
-                    const actData = await actRes.value.json();
-                    setActivityItems(actData);
-                } else {
-                     console.warn('Dashboard Warning: Failed to fetch activity data.', actRes.status === 'rejected' ? actRes.reason : actRes.value.statusText);
-                }
-
-                if (msgRes.status === 'fulfilled' && msgRes.value.ok) {
-                    const msgData = await msgRes.value.json();
-                    setUnreadMessagesCount(msgData.count);
-                } else {
-                    console.warn('Dashboard Warning: Failed to fetch unread messages count.', msgRes.status === 'rejected' ? msgRes.reason : msgRes.value.statusText);
-                }
-                */
-
-                // Set all data states to empty/zero to clear the dashboard display
-                setCollections([]);
-                setInstructions([]);
-                setServiceJobs([]);
-                setFinancialData([]);
+                // Mock data until backend is ready for these
+                setFinancialData([
+                    { name: 'Jan', income: 4000, expenses: 2400 },
+                    { name: 'Feb', income: 3000, expenses: 1398 },
+                    { name: 'Mar', income: 2000, expenses: 9800 },
+                    { name: 'Apr', income: 2780, expenses: 3908 },
+                    { name: 'May', income: 1890, expenses: 4800 },
+                    { name: 'Jun', income: 2390, expenses: 3800 },
+                ]);
                 setActivityItems([]);
                 setUnreadMessagesCount(0);
 
