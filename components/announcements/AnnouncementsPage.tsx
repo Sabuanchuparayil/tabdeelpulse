@@ -87,8 +87,14 @@ const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, on
                     <p className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">{ann.timestamp}</p>
                   </div>
                   <div className="flex items-center space-x-2 mt-1 mb-3">
-                      <img src={ann.author.avatarUrl} alt={ann.author.name} className="h-6 w-6 rounded-full"/>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{ann.author.name}</span>
+                      {ann.author ? (
+                          <>
+                              <img src={ann.author.avatarUrl} alt={ann.author.name} className="h-6 w-6 rounded-full object-cover"/>
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{ann.author.name}</span>
+                          </>
+                      ) : (
+                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">System Announcement</span>
+                      )}
                   </div>
                   <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ann.content}</p>
                   

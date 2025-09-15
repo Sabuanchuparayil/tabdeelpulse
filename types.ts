@@ -206,8 +206,3 @@ export interface Announcement {
   attachmentName?: string;
   attachmentType?: string;
 }
-
-export const currentUser: { name: string; avatarUrl: string } = {
-    name: 'Mohammed Semeem', // Corresponds to the user in MainLayout
-    avatarUrl: 'https://picsum.photos/seed/semeem/100/100'
-};

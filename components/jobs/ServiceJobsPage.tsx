@@ -231,8 +231,14 @@ const ServiceJobsPage: React.FC = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{job.project}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
-                                                    <img src={job.technician.avatarUrl} alt={job.technician.name} className="h-8 w-8 rounded-full object-cover"/>
-                                                    <div className="ml-3 text-sm text-gray-600 dark:text-gray-300">{job.technician.name}</div>
+                                                    {job.technician ? (
+                                                        <>
+                                                            <img src={job.technician.avatarUrl} alt={job.technician.name} className="h-8 w-8 rounded-full object-cover"/>
+                                                            <div className="ml-3 text-sm text-gray-600 dark:text-gray-300">{job.technician.name}</div>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap"><PriorityBadge priority={job.priority} /></td>
@@ -264,8 +270,14 @@ const ServiceJobsPage: React.FC = () => {
                                     </div>
                                     <div className="mt-4 flex justify-between items-center">
                                         <div className="flex items-center">
-                                            <img src={job.technician.avatarUrl} alt={job.technician.name} className="h-8 w-8 rounded-full object-cover"/>
-                                            <div className="ml-3 text-sm text-gray-600 dark:text-gray-300">{job.technician.name}</div>
+                                            {job.technician ? (
+                                                <>
+                                                    <img src={job.technician.avatarUrl} alt={job.technician.name} className="h-8 w-8 rounded-full object-cover"/>
+                                                    <div className="ml-3 text-sm text-gray-600 dark:text-gray-300">{job.technician.name}</div>
+                                                </>
+                                            ) : (
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
+                                            )}
                                         </div>
                                         <StatusBadge status={job.status} />
                                     </div>

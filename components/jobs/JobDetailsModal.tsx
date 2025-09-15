@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ServiceJob, JobComment } from '../../types';
-import { currentUser } from '../../types';
+import { useAuth } from '../../hooks/useAuth';
 import { XMarkIcon, ChatBubbleBottomCenterTextIcon, PaperClipIcon, ExclamationTriangleIcon } from '../icons/Icons';
 
 interface JobDetailsModalProps {
@@ -15,6 +15,7 @@ const mockComments: JobComment[] = [
 ];
 
 const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job }) => {
+  const { user: currentUser } = useAuth();
   if (!isOpen) return null;
   
   const handleEscalate = () => {
@@ -53,18 +54,20 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job 
                       </div>
                   ))}
                 </div>
-                 <div className="mt-4 flex items-center">
-                    <img src={currentUser.avatarUrl} alt="current user" className="h-8 w-8 rounded-full object-cover mr-3" />
-                    <div className="relative flex-grow">
-                        <input type="text" placeholder="Add a comment..." className="w-full pl-4 pr-10 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary"/>
-                        <button className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary"><PaperClipIcon className="h-5 w-5"/></button>
+                 {currentUser && (
+                    <div className="mt-4 flex items-center">
+                        <img src={currentUser.avatarUrl || ''} alt={currentUser.name} className="h-8 w-8 rounded-full object-cover mr-3" />
+                        <div className="relative flex-grow">
+                            <input type="text" placeholder="Add a comment..." className="w-full pl-4 pr-10 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary"/>
+                            <button className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary"><PaperClipIcon className="h-5 w-5"/></button>
+                        </div>
                     </div>
-                 </div>
+                 )}
             </div>
             <div>
                 <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Details</h4>
                 <div className="space-y-3 text-sm">
-                    <p><strong className="text-gray-600 dark:text-gray-400">Technician:</strong> {job.technician.name}</p>
+                    <p><strong className="text-gray-600 dark:text-gray-400">Technician:</strong> {job.technician ? job.technician.name : 'Unassigned'}</p>
                     <p><strong className="text-gray-600 dark:text-gray-400">Status:</strong> {job.status}</p>
                     <p><strong className="text-gray-600 dark:text-gray-400">Priority:</strong> {job.priority}</p>
                 </div>

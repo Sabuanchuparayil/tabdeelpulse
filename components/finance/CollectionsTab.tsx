@@ -76,10 +76,22 @@ const CollectionsTab: React.FC = () => {
   
   const handleAddCollection = async (newCollectionData: Omit<Collection, 'id' | 'status'>) => {
     try {
+        const formData = new FormData();
+        formData.append('project', newCollectionData.project);
+        formData.append('payer', newCollectionData.payer);
+        formData.append('amount', String(newCollectionData.amount));
+        formData.append('type', newCollectionData.type);
+        formData.append('date', newCollectionData.date);
+        if (newCollectionData.outstandingAmount) {
+            formData.append('outstandingAmount', String(newCollectionData.outstandingAmount));
+        }
+        if (newCollectionData.document) {
+            formData.append('document', newCollectionData.document);
+        }
+
         const response = await fetch(`${backendUrl}/api/finance/collections`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newCollectionData),
+            body: formData,
         });
         if (!response.ok) throw new Error('Failed to add collection');
         fetchCollections();

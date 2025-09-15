@@ -76,10 +76,17 @@ const DepositsTab: React.FC = () => {
   
    const handleAddDeposit = async (newDepositData: Omit<Deposit, 'id' | 'status'>) => {
     try {
+        const formData = new FormData();
+        formData.append('accountHead', newDepositData.accountHead);
+        formData.append('amount', String(newDepositData.amount));
+        formData.append('date', newDepositData.date);
+        if (newDepositData.document) {
+            formData.append('document', newDepositData.document);
+        }
+
         const response = await fetch(`${backendUrl}/api/finance/deposits`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newDepositData),
+            body: formData,
         });
         if (!response.ok) throw new Error('Failed to add deposit');
         fetchDeposits();

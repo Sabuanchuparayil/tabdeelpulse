@@ -88,34 +88,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
   const handleAddAnnouncement = async (announcementData: { title: string; content: string; attachment: File | null }) => {
     if (!user) return;
 
-    let attachmentUrl: string | undefined = undefined;
-    let attachmentName: string | undefined = undefined;
-    let attachmentType: string | undefined = undefined;
+    const formData = new FormData();
+    formData.append('title', announcementData.title);
+    formData.append('content', announcementData.content);
+    
+    // Use bracket notation for the author object, which some backend parsers can automatically convert to an object.
+    formData.append('author[name]', user.name);
+    formData.append('author[avatarUrl]', user.avatarUrl || '');
+
     if (announcementData.attachment) {
-      // In a real app, you'd upload the file to a server/storage and get a permanent URL.
-      // For this demo, we'll use a local blob URL which works for the current session.
-      attachmentUrl = URL.createObjectURL(announcementData.attachment);
-      attachmentName = announcementData.attachment.name;
-      attachmentType = announcementData.attachment.type;
+      formData.append('attachment', announcementData.attachment);
     }
 
-     try {
-        const response = await fetch(`${backendUrl}/api/announcements`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                title: announcementData.title,
-                content: announcementData.content,
-                author: { name: user.name, avatarUrl: user.avatarUrl || '' },
-                attachmentUrl,
-                attachmentName,
-                attachmentType,
-             })
-        });
-        if (!response.ok) throw new Error('Failed to add announcement');
-        fetchData(); // Refetch data
+    try {
+      const response = await fetch(`${backendUrl}/api/announcements`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response:', errorText);
+        throw new Error('Failed to add announcement');
+      }
+      fetchData(); // Refetch data
     } catch (error) {
-        console.error("Error adding announcement:", error);
+      console.error("Error adding announcement:", error);
+      throw new Error('Failed to add announcement');
     }
   };
 
