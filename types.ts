@@ -202,7 +202,4 @@ export interface Announcement {
     avatarUrl: string;
   };
   timestamp: string;
-  attachmentUrl?: string;
-  attachmentName?: string;
-  attachmentType?: string;
 }

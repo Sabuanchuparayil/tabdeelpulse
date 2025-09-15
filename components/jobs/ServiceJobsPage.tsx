@@ -45,24 +45,29 @@ const ServiceJobsPage: React.FC = () => {
         try {
             setIsLoading(true);
             setError(null);
+            
+            // Fetch both jobs and projects from the backend
             const [jobsRes, projectsRes] = await Promise.all([
                 fetch(`${backendUrl}/api/service-jobs`),
-                fetch(`${backendUrl}/api/projects`),
+                fetch(`${backendUrl}/api/projects`)
             ]);
-
-            if (!jobsRes.ok || !projectsRes.ok) throw new Error('Failed to fetch data');
+    
+            if (!jobsRes.ok) throw new Error('Failed to fetch service jobs.');
+            if (!projectsRes.ok) throw new Error('Failed to fetch projects.');
             
             const jobsData = await jobsRes.json();
             const projectsData = await projectsRes.json();
-
+            
             setJobs(jobsData);
             setProjects(projectsData);
+
         } catch(err: any) {
             setError(err.message);
         } finally {
             setIsLoading(false);
         }
     }, []);
+
 
     useEffect(() => {
         fetchJobs();
@@ -78,16 +83,23 @@ const ServiceJobsPage: React.FC = () => {
     
     const handleAddJob = async (newJobData: Omit<ServiceJob, 'id' | 'status'>) => {
         try {
+            setError(null);
             const response = await fetch(`${backendUrl}/api/service-jobs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newJobData),
             });
-            if (!response.ok) throw new Error('Failed to add job');
-            fetchJobs();
+            if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({ message: 'An unknown server error occurred.' }));
+                throw new Error(errorBody.message || `Failed to add job. Server responded with status ${response.status}.`);
+            }
+            // Add the new job returned from the server (with its DB ID) to our state
+            const addedJob = await response.json(); 
+            setJobs(prevJobs => [addedJob, ...prevJobs]);
             setCreateModalOpen(false);
-        } catch(err) {
-            console.error(err);
+        } catch(err: any) {
+            console.error("Error adding service job:", err);
+            setError(err.message);
         }
     };
     

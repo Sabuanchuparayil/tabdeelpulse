@@ -22,17 +22,15 @@ const CollectionsTab: React.FC = () => {
     try {
         setIsLoading(true);
         setError(null);
-        const [collectionsRes, projectsRes] = await Promise.all([
-            fetch(`${backendUrl}/api/finance/collections`),
-            fetch(`${backendUrl}/api/projects`),
-        ]);
-        if (!collectionsRes.ok || !projectsRes.ok) throw new Error('Failed to fetch data');
         
-        const collectionsData = await collectionsRes.json();
+        // Fetch projects for the modal, but clear collections data for go-live
+        const projectsRes = await fetch(`${backendUrl}/api/projects`);
+        if (!projectsRes.ok) throw new Error('Failed to fetch projects');
         const projectsData = await projectsRes.json();
-        
-        setCollections(collectionsData);
         setProjects(projectsData);
+
+        setCollections([]); // Clear sample data
+        
     } catch (err: any) {
         setError(err.message);
     } finally {

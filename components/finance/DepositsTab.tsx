@@ -22,17 +22,15 @@ const DepositsTab: React.FC = () => {
     try {
         setIsLoading(true);
         setError(null);
-        const [depositsRes, accountsRes] = await Promise.all([
-            fetch(`${backendUrl}/api/finance/deposits`),
-            fetch(`${backendUrl}/api/account-heads`),
-        ]);
-        if (!depositsRes.ok || !accountsRes.ok) throw new Error('Failed to fetch data');
 
-        const depositsData = await depositsRes.json();
+        // Fetch account heads for the modal, but clear deposits data for go-live
+        const accountsRes = await fetch(`${backendUrl}/api/account-heads`);
+        if (!accountsRes.ok) throw new Error('Failed to fetch account heads');
         const accountsData = await accountsRes.json();
-        
-        setDeposits(depositsData);
         setAccountHeads(accountsData);
+
+        setDeposits([]); // Clear sample data
+
     } catch (err: any) {
         setError(err.message);
     } finally {

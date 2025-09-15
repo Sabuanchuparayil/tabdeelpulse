@@ -72,7 +72,7 @@ const NewPaymentInstructionModal: React.FC<NewPaymentInstructionModalProps> = ({
                         <div className="mt-6 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                             <div>
                                 <label htmlFor="payee" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payee</label>
-                                <input type="text" id="payee" value={payee} onChange={e => setPayee(e.target.value)} className={`mt-1 block w-full shadow-sm sm:text-sm ${errors.payee ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`} />
+                                <input type="text" id="payee" value={payee} onChange={e => setPayee(e.target.value.replace(/[0-9]/g, ''))} className={`mt-1 block w-full shadow-sm sm:text-sm ${errors.payee ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`} />
                                 {errors.payee && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.payee}</p>}
                             </div>
                             <div>

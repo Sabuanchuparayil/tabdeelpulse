@@ -81,7 +81,7 @@ const LogCollectionModal: React.FC<LogCollectionModalProps> = ({ isOpen, onClose
                             </div>
                             <div>
                                 <label htmlFor="payer" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payer</label>
-                                <input type="text" id="payer" value={payer} onChange={e => setPayer(e.target.value)} className={`mt-1 block w-full shadow-sm sm:text-sm ${errors.payer ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`} />
+                                <input type="text" id="payer" value={payer} onChange={e => setPayer(e.target.value.replace(/[0-9]/g, ''))} className={`mt-1 block w-full shadow-sm sm:text-sm ${errors.payer ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`} />
                                 {errors.payer && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.payer}</p>}
                             </div>
                              <div>

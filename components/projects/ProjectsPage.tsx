@@ -22,6 +22,7 @@ const ProjectsPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setProjects([]); // Clear current data before fetching
       const response = await fetch(`${backendUrl}/api/projects`);
       if (!response.ok) throw new Error('Failed to fetch projects');
       const data = await response.json();
@@ -160,7 +161,7 @@ const ProjectsPage: React.FC = () => {
                     <div key={proj.id} className="p-4">
                     <div className="flex justify-between items-start">
                         <div>
-                            <div className="text-sm font-medium text-gray-90atext-white">{proj.name}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{proj.name}</div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
                         </div>
                         <StatusBadge status={proj.status} />

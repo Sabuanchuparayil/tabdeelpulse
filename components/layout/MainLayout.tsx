@@ -85,25 +85,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
     }
   };
 
-  const handleAddAnnouncement = async (announcementData: { title: string; content: string; attachment: File | null }) => {
+  const handleAddAnnouncement = async (announcementData: { title: string; content: string }) => {
     if (!user) return;
 
-    const formData = new FormData();
-    formData.append('title', announcementData.title);
-    formData.append('content', announcementData.content);
-    
-    // Use bracket notation for the author object, which some backend parsers can automatically convert to an object.
-    formData.append('author[name]', user.name);
-    formData.append('author[avatarUrl]', user.avatarUrl || '');
-
-    if (announcementData.attachment) {
-      formData.append('attachment', announcementData.attachment);
-    }
+    const newAnnouncementPayload = {
+      title: announcementData.title,
+      content: announcementData.content,
+      author: {
+        name: user.name,
+        avatarUrl: user.avatarUrl || '',
+      },
+    };
 
     try {
       const response = await fetch(`${backendUrl}/api/announcements`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newAnnouncementPayload),
       });
 
       if (!response.ok) {
@@ -117,6 +117,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
       throw new Error('Failed to add announcement');
     }
   };
+
 
   const handleDeleteAnnouncement = async (announcementId: string) => {
     try {

@@ -24,10 +24,18 @@ const PaymentInstructionsTab: React.FC = () => {
         try {
             setIsLoading(true);
             setError(null);
+            
+            // NOTE: The following data fetching is temporarily disabled to clear the view
+            // of demo data for the go-live. The backend database should be cleared,
+            // and then this code can be uncommented to show live data.
+            /*
             const response = await fetch(`${backendUrl}/api/finance/payment-instructions`);
             if (!response.ok) throw new Error('Failed to fetch payment instructions');
             const data = await response.json();
             setInstructions(data);
+            */
+           setInstructions([]); // Clear sample data
+            
         } catch (err: any) {
             setError(err.message);
         } finally {

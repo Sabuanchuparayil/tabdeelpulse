@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import type { Announcement } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
-import { PlusIcon, MegaphoneIcon, PaperClipIcon, TrashIcon } from '../icons/Icons';
+import { PlusIcon, MegaphoneIcon, TrashIcon } from '../icons/Icons';
 import CreateAnnouncementModal from './CreateAnnouncementModal';
 import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 
 interface AnnouncementsPageProps {
   announcements: Announcement[];
-  onAddAnnouncement: (announcement: { title: string; content: string; attachment: File | null }) => void;
+  onAddAnnouncement: (announcement: { title: string; content: string; }) => void;
   onDeleteAnnouncement: (announcementId: string) => void;
 }
 
@@ -15,6 +15,7 @@ const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, on
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingAnnouncement, setDeletingAnnouncement] = useState<Announcement | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const { hasPermission } = useAuth();
   const canCreate = hasPermission('announcements:create');
   const canDelete = hasPermission('announcements:delete');
@@ -66,18 +67,27 @@ const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, on
         </div>
       ) : (
         <div className="space-y-6">
-          {announcements.map((ann) => (
+          {announcements.map((ann) => {
+            const isExpanded = expandedId === ann.id;
+            return (
             <div key={ann.id} className="bg-white dark:bg-dark-card shadow-md rounded-lg p-6 relative">
               {canDelete && (
                 <button
                   onClick={() => handleDeleteClick(ann)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                  className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors z-10"
                   aria-label="Delete announcement"
                 >
                   <TrashIcon className="h-5 w-5" />
                 </button>
               )}
-              <div className="flex items-start space-x-4">
+              <div 
+                className="flex items-start space-x-4 cursor-pointer"
+                onClick={() => setExpandedId(isExpanded ? null : ann.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpandedId(isExpanded ? null : ann.id)}}
+                aria-expanded={isExpanded}
+              >
                 <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <MegaphoneIcon className="h-6 w-6 text-primary" />
                 </div>
@@ -96,45 +106,13 @@ const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, on
                           <span className="text-sm font-medium text-gray-500 dark:text-gray-400">System Announcement</span>
                       )}
                   </div>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ann.content}</p>
-                  
-                  {ann.attachmentUrl && (
-                    <div className="mt-4">
-                      {ann.attachmentType === 'application/pdf' ? (
-                        <iframe
-                          src={ann.attachmentUrl}
-                          width="100%"
-                          height="500px"
-                          className="rounded-lg border border-gray-200 dark:border-gray-700"
-                          title={ann.attachmentName || 'Embedded PDF'}
-                        >
-                          <p>Your browser does not support iframes.</p>
-                        </iframe>
-                      ) : ann.attachmentType?.startsWith('image/') ? (
-                        <img
-                          src={ann.attachmentUrl}
-                          alt={ann.attachmentName || 'Attached image'}
-                          className="mt-4 rounded-lg max-w-full h-auto border border-gray-200 dark:border-gray-700"
-                        />
-                      ) : ann.attachmentName ? (
-                        <a
-                          href={ann.attachmentUrl}
-                          download={ann.attachmentName}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                        >
-                          <PaperClipIcon className="h-5 w-5 mr-2" />
-                          View Attachment ({ann.attachmentName})
-                        </a>
-                      ) : null}
-                    </div>
-                  )}
-
+                  <p className={`text-gray-700 dark:text-gray-300 whitespace-pre-wrap transition-all duration-300 ease-in-out ${!isExpanded && 'line-clamp-2'}`}>
+                    {ann.content}
+                  </p>
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
