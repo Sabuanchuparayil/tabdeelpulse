@@ -84,13 +84,23 @@ const UserProfilePage: React.FC = () => {
         if (!validateInfo() || !user) return;
 
         try {
-            await updateUser({
+            const updatedUserData = {
                 ...user,
                 name: formData.name,
                 email: formData.email,
                 mobile: formData.mobile,
                 avatarUrl: avatarPreview,
-            });
+            };
+
+            // The backend does not support base64 image uploads.
+            // If a new image was selected (avatarPreview is a base64 string),
+            // revert to the original user.avatarUrl before sending the payload.
+            // This prevents the save error and allows other profile info to be updated.
+            if (avatarPreview && avatarPreview.startsWith('data:image')) {
+                updatedUserData.avatarUrl = user.avatarUrl;
+            }
+            
+            await updateUser(updatedUserData);
             setInfoSuccess("Profile information updated successfully!");
             setTimeout(() => setInfoSuccess(''), 3000);
         } catch (err) {
