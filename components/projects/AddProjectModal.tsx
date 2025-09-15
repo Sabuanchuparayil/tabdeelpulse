@@ -10,14 +10,12 @@ interface AddProjectModalProps {
 
 const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClose, onSave }) => {
   const [name, setName] = useState('');
-  const [client, setClient] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('Active');
-  const [errors, setErrors] = useState<{ name?: string; client?: string } >({});
+  const [errors, setErrors] = useState<{ name?: string; } >({});
 
   useEffect(() => {
     if (isOpen) {
       setName('');
-      setClient('');
       setStatus('Active');
       setErrors({});
     }
@@ -26,7 +24,6 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClose, onSa
   const validate = () => {
     const newErrors: typeof errors = {};
     if (!name.trim()) newErrors.name = 'Project name is required.';
-    if (!client.trim()) newErrors.client = 'Client name is required.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -34,7 +31,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClose, onSa
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave({ name, client, status });
+      onSave({ name, status });
     }
   };
 
@@ -55,11 +52,6 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ isOpen, onClose, onSa
                 <label htmlFor="project-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
                 <input type="text" id="project-name" value={name} onChange={e => setName(e.target.value)} className={`mt-1 block w-full shadow-sm sm:text-sm ${errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`} />
                 {errors.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>}
-              </div>
-              <div>
-                <label htmlFor="project-client" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Client</label>
-                <input type="text" id="project-client" value={client} onChange={e => setClient(e.target.value)} className={`mt-1 block w-full shadow-sm sm:text-sm ${errors.client ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`} />
-                {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
               </div>
               <div>
                 <label htmlFor="project-status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>

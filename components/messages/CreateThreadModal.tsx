@@ -1,12 +1,11 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import type { Thread, Message } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
 
 interface CreateThreadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (thread: Omit<Thread, 'id' | 'lastMessage' | 'timestamp' | 'unreadCount'>) => void;
+  onSave: (data: { title: string, initialMessage: string, participantIds: number[] }) => void;
 }
 
 const CreateThreadModal: React.FC<CreateThreadModalProps> = ({ isOpen, onClose, onSave }) => {
@@ -51,26 +50,10 @@ const CreateThreadModal: React.FC<CreateThreadModalProps> = ({ isOpen, onClose, 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validate() && currentUser) {
-        const firstMessage: Message = {
-            id: Date.now(),
-            user: { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
-            text: initialMessage,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
-        };
-        const participants = [
-            { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
-            ...allUsers
-                .filter(u => selectedParticipants.has(u.id))
-                .map(u => ({
-                    name: u.name,
-                    avatarUrl: u.avatarUrl || '',
-                }))
-        ];
-
         onSave({
             title,
-            participants,
-            messages: [firstMessage],
+            initialMessage,
+            participantIds: Array.from(selectedParticipants),
         });
     }
   };

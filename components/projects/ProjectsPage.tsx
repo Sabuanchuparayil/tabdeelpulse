@@ -127,7 +127,6 @@ const ProjectsPage: React.FC = () => {
                     <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Project Name</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Client</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -139,7 +138,6 @@ const ProjectsPage: React.FC = () => {
                             <div className="text-sm font-medium text-gray-900 dark:text-white">{proj.name}</div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">PROJ-{proj.id}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{proj.client}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                             <StatusBadge status={proj.status} />
                         </td>
@@ -166,11 +164,7 @@ const ProjectsPage: React.FC = () => {
                         </div>
                         <StatusBadge status={proj.status} />
                     </div>
-                    <div className="mt-4 flex justify-between items-center">
-                        <div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Client</div>
-                            <div className="text-sm text-gray-900 dark:text-gray-300">{proj.client}</div>
-                        </div>
+                    <div className="mt-4 flex justify-end items-center">
                         <div className="flex items-center space-x-4">
                         {hasPermission('projects:update') && <button onClick={() => { setSelectedProject(proj); setEditModalOpen(true); }} className="text-primary hover:text-primary/80"><PencilIcon className="h-5 w-5"/></button>}
                         {hasPermission('projects:delete') && <button onClick={() => { setSelectedProject(proj); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"><TrashIcon className="h-5 w-5"/></button>}

@@ -1,58 +1,114 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Thread, Message } from '../../types';
 import ChatView from './ChatView';
 import { PlusIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
 import CreateThreadModal from './CreateThreadModal';
-import { mockThreads } from '../../data/mockData';
+import { backendUrl } from '../../config';
 
 const MessagesPage: React.FC = () => {
-    const [threads, setThreads] = useState<Thread[]>(mockThreads);
-    const [selectedThreadId, setSelectedThreadId] = useState<string | null>(threads.length > 0 ? threads[0].id : null);
+    const [threads, setThreads] = useState<Thread[]>([]);
+    const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
     const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { user: currentUser } = useAuth();
 
-    const handleSendMessage = (threadId: string, messageText: string) => {
+    const fetchThreads = useCallback(async () => {
+        if (!currentUser) return;
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`${backendUrl}/api/threads?userId=${currentUser.id}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch conversations.');
+            }
+            const data: Thread[] = await response.json();
+            setThreads(data);
+            // If no thread is selected, or the selected one is gone, select the first one.
+            if (!selectedThreadId || !data.some(t => t.id === selectedThreadId)) {
+                 setSelectedThreadId(data[0]?.id || null);
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentUser, selectedThreadId]);
+
+    useEffect(() => {
+        fetchThreads();
+    }, [fetchThreads]);
+
+
+    const handleSendMessage = async (threadId: string, messageText: string) => {
         if (!currentUser) return;
 
-        const newMessage: Message = {
+        const optimisticMessage: Message = {
             id: Date.now(),
             user: { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
             text: messageText,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
 
+        // Optimistically update the UI
         setThreads(prevThreads => prevThreads.map(thread => {
             if (thread.id === threadId) {
                 return {
                     ...thread,
-                    messages: [...thread.messages, newMessage],
+                    messages: [...thread.messages, optimisticMessage],
                     lastMessage: messageText,
-                    timestamp: newMessage.timestamp,
+                    timestamp: optimisticMessage.timestamp,
                 };
             }
             return thread;
         }));
+        
+        // Send to backend
+        try {
+            const response = await fetch(`${backendUrl}/api/threads/${threadId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: messageText, userId: currentUser.id })
+            });
+            if (!response.ok) {
+                throw new Error('Failed to send message.');
+            }
+            // Optional: refetch threads to get the real message ID and timestamp from DB
+            // fetchThreads(); 
+        } catch (err) {
+            console.error(err);
+            setError("Failed to send message. Please try again.");
+            // Revert optimistic update on failure
+            fetchThreads();
+        }
     };
     
-    const handleCreateThread = (newThread: Omit<Thread, 'id' | 'lastMessage' | 'timestamp' | 'unreadCount'>) => {
-        const fullNewThread: Thread = {
-            ...newThread,
-            id: `thread-${Date.now()}`,
-            lastMessage: newThread.messages[0]?.text || 'No messages yet.',
-            timestamp: newThread.messages[0]?.timestamp || new Date().toLocaleTimeString(),
-            unreadCount: 0,
-        };
-        setThreads(prev => [fullNewThread, ...prev]);
-        setSelectedThreadId(fullNewThread.id);
-        setCreateModalOpen(false);
+    const handleCreateThread = async (data: { title: string, initialMessage: string, participantIds: number[] }) => {
+        if (!currentUser) return;
+        try {
+             const response = await fetch(`${backendUrl}/api/threads`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...data, creatorId: currentUser.id })
+             });
+             if (!response.ok) throw new Error('Failed to create thread.');
+             
+             // On success, close modal and refetch all threads
+             setCreateModalOpen(false);
+             fetchThreads();
+
+        } catch (err) {
+            console.error(err);
+            // You could set an error state within the modal here
+        }
     };
 
-    const activeThread = threads.find(t => t.id === selectedThreadId);
+    const activeThread = threads.find(t => String(t.id) === selectedThreadId);
 
     const ThreadListItem: React.FC<{ thread: Thread; isActive: boolean }> = ({ thread, isActive }) => (
         <li
-            onClick={() => setSelectedThreadId(thread.id)}
+            onClick={() => setSelectedThreadId(String(thread.id))}
             className={`p-4 cursor-pointer rounded-lg transition-colors ${isActive ? 'bg-primary/10 dark:bg-primary/20' : 'hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}
         >
             <div className="flex justify-between items-center">
@@ -78,9 +134,12 @@ const MessagesPage: React.FC = () => {
                         <PlusIcon className="h-6 w-6" />
                     </button>
                 </div>
-                <ul className="flex-1 overflow-y-auto p-2 space-y-1">
-                    {threads.map(thread => (
-                        <ThreadListItem key={thread.id} thread={thread} isActive={thread.id === selectedThreadId} />
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {isLoading && <div className="p-4 text-center text-gray-500">Loading...</div>}
+                    {error && <div className="p-4 text-center text-red-500">{error}</div>}
+                    {!isLoading && !error && threads.length === 0 && <div className="p-4 text-center text-gray-500">No conversations yet.</div>}
+                    {!isLoading && !error && threads.map(thread => (
+                        <ThreadListItem key={thread.id} thread={thread} isActive={String(thread.id) === selectedThreadId} />
                     ))}
                 </ul>
             </div>
