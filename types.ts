@@ -1,4 +1,5 @@
 
+
 export type UserStatus = 'Active' | 'Disabled';
 export type UserRole = string;
 
@@ -43,8 +44,8 @@ export interface Role {
 export interface Kpi {
   title: string;
   value: string;
-  change: string;
-  changeType: 'increase' | 'decrease';
+  change?: string;
+  changeType?: 'increase' | 'decrease';
   link?: string;
 }
 
@@ -200,6 +201,9 @@ export interface Announcement {
     avatarUrl: string;
   };
   timestamp: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentType?: string;
 }
 
 export const currentUser: { name: string; avatarUrl: string } = {

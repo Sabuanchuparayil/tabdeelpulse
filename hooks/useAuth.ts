@@ -22,7 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [rawAllUsers, setRawAllUsers] = useState<User[]>([]);
   const [activeUser, setActiveUser] = useState<User | null>(() => {
     try {
       const savedUser = localStorage.getItem('tabdeel-pulse-user');
@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const role = roles.find(r => r.id === user.roleId);
     return {
         ...user,
+        role: role ? role.name : user.roleId,
         permissions: role ? role.permissions : [],
         financialLimit: role?.id === 'Administrator' ? 100000 : (role?.id === 'Manager' ? 50000 : 0),
     };
@@ -79,16 +80,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const usersFromApi: User[] = await response.json();
-        const enhancedUsers = usersFromApi.map(u => enhanceUser(u));
-        setAllUsers(enhancedUsers);
+        setRawAllUsers(usersFromApi);
       } catch (error) {
         console.error("Error fetching users:", error);
       }
     };
     fetchUsers();
-  }, [enhanceUser]);
+  }, []);
   
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
       const response = await fetch(`${backendUrl}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,25 +101,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const { user: loggedInUser } = await response.json();
-      const enhanced = enhanceUser(loggedInUser);
-      setActiveUser(enhanced);
-  };
+      setActiveUser(loggedInUser);
+  }, []);
   
-  const logout = () => {
+  const logout = useCallback(() => {
     setActiveUser(null);
-  };
+  }, []);
 
+  const allUsers = useMemo(() => rawAllUsers.map(u => enhanceUser(u)), [rawAllUsers, enhanceUser]);
 
-  const originalUser = useMemo(() => allUsers.find(u => u.id === 1) || null, [allUsers]);
+  const originalUser = useMemo(() => {
+      const user = allUsers.find(u => u.id === 1);
+      return user || null;
+  }, [allUsers]);
 
   const switchUser = useCallback((userId: number) => {
-    const userToSwitchTo = allUsers.find(u => u.id === userId);
+    const userToSwitchTo = rawAllUsers.find(u => u.id === userId);
     if(userToSwitchTo) {
-      setActiveUser(enhanceUser(userToSwitchTo));
+      setActiveUser(userToSwitchTo);
     }
-  }, [allUsers, enhanceUser]);
+  }, [rawAllUsers]);
   
-  const addUser = async (newUserData: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit' | 'avatarUrl'>) => {
+  const addUser = useCallback(async (newUserData: Omit<User, 'id' | 'role' | 'permissions' | 'financialLimit' | 'avatarUrl'>) => {
     try {
         const userDataWithAvatar = {
             ...newUserData,
@@ -132,14 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (!response.ok) throw new Error('Failed to add user');
         const addedUserFromApi = await response.json();
-        const enhancedNewUser = enhanceUser(addedUserFromApi);
-        setAllUsers(prevUsers => [enhancedNewUser, ...prevUsers]);
+        setRawAllUsers(prevUsers => [addedUserFromApi, ...prevUsers]);
     } catch (error) {
         console.error("Error adding user:", error);
+        throw error;
     }
-  };
+  }, []);
   
-  const updateUser = async (updatedUser: User) => {
+  const updateUser = useCallback(async (updatedUser: User) => {
      try {
         const response = await fetch(`${backendUrl}/api/users/${updatedUser.id}`, {
             method: 'PUT',
@@ -148,17 +151,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (!response.ok) throw new Error('Failed to update user');
         const updatedUserFromApi = await response.json();
-        const enhancedUser = enhanceUser(updatedUserFromApi);
-        setAllUsers(users => users.map(user => user.id === enhancedUser.id ? enhancedUser : user));
-        if (activeUser?.id === enhancedUser.id) {
-            setActiveUser(enhancedUser);
-        }
+        setRawAllUsers(users => users.map(user => user.id === updatedUserFromApi.id ? updatedUserFromApi : user));
+        setActiveUser(currentActiveUser => {
+            if (currentActiveUser?.id === updatedUserFromApi.id) {
+                return updatedUserFromApi;
+            }
+            return currentActiveUser;
+        });
     } catch (error) {
         console.error("Error updating user:", error);
+        throw error;
     }
-  };
+  }, []);
 
-  const deleteUser = async (userId: number) => {
+  const deleteUser = useCallback(async (userId: number) => {
     try {
         const response = await fetch(`${backendUrl}/api/users/${userId}`, {
             method: 'DELETE',
@@ -166,16 +172,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!response.ok) {
             throw new Error('Failed to delete user');
         }
-        setAllUsers(users => users.filter(user => user.id !== userId));
-        if (activeUser?.id === userId && originalUser) {
-            setActiveUser(originalUser);
-        }
+        setRawAllUsers(users => users.filter(user => user.id !== userId));
+        setActiveUser(currentActiveUser => {
+            if (currentActiveUser?.id === userId) {
+                const adminUser = rawAllUsers.find(u => u.id === 1);
+                return adminUser || null;
+            }
+            return currentActiveUser;
+        });
     } catch (error) {
         console.error("Error deleting user:", error);
+        throw error;
     }
-  };
+  }, [rawAllUsers]);
   
-  const changePassword = async (userId: number, currentPassword: string, newPassword: string) => {
+  const changePassword = useCallback(async (userId: number, currentPassword: string, newPassword: string) => {
     const response = await fetch(`${backendUrl}/api/users/${userId}/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,18 +197,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to change password.');
     }
-  };
+  }, []);
 
-  const hasPermission = useMemo(() => (permission: Permission): boolean => {
-    if (!activeUser) return false;
-    if (activeUser.permissions.includes('system:admin')) {
+  const user = useMemo(() => activeUser ? enhanceUser(activeUser) : null, [activeUser, enhanceUser]);
+
+  const hasPermission = useCallback((permission: Permission): boolean => {
+    if (!user) return false;
+    if (user.permissions.includes('system:admin')) {
       return true;
     }
-    return activeUser.permissions.includes(permission);
-  }, [activeUser]);
+    return user.permissions.includes(permission);
+  }, [user]);
 
-  const value = { 
-      user: activeUser, 
+  const value = useMemo(() => ({ 
+      user, 
       originalUser,
       allUsers,
       roles,
@@ -210,7 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUser,
       deleteUser,
       changePassword,
-  };
+  }), [user, originalUser, allUsers, roles, login, logout, switchUser, hasPermission, addUser, updateUser, deleteUser, changePassword]);
 
   return React.createElement(AuthContext.Provider, { value }, children);
 };

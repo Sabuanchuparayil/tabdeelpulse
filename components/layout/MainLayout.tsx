@@ -85,13 +85,32 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
     }
   };
 
-  const handleAddAnnouncement = async (announcementData: Omit<Announcement, 'id' | 'author' | 'timestamp'>) => {
+  const handleAddAnnouncement = async (announcementData: { title: string; content: string; attachment: File | null }) => {
     if (!user) return;
+
+    let attachmentUrl: string | undefined = undefined;
+    let attachmentName: string | undefined = undefined;
+    let attachmentType: string | undefined = undefined;
+    if (announcementData.attachment) {
+      // In a real app, you'd upload the file to a server/storage and get a permanent URL.
+      // For this demo, we'll use a local blob URL which works for the current session.
+      attachmentUrl = URL.createObjectURL(announcementData.attachment);
+      attachmentName = announcementData.attachment.name;
+      attachmentType = announcementData.attachment.type;
+    }
+
      try {
         const response = await fetch(`${backendUrl}/api/announcements`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...announcementData, author: { name: user.name, avatarUrl: user.avatarUrl || '' } })
+            body: JSON.stringify({ 
+                title: announcementData.title,
+                content: announcementData.content,
+                author: { name: user.name, avatarUrl: user.avatarUrl || '' },
+                attachmentUrl,
+                attachmentName,
+                attachmentType,
+             })
         });
         if (!response.ok) throw new Error('Failed to add announcement');
         fetchData(); // Refetch data

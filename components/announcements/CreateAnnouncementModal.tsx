@@ -1,23 +1,25 @@
 import React, { useState, FormEvent, useEffect } from 'react';
 import type { Announcement } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
-import { useAuth } from '../../hooks/useAuth';
+import DocumentUpload from '../finance/DocumentUpload';
 
 interface CreateAnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (announcement: Omit<Announcement, 'id' | 'author' | 'timestamp'>) => void;
+  onSave: (announcement: { title: string; content: string; attachment: File | null }) => void;
 }
 
 const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({ isOpen, onClose, onSave }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [errors, setErrors] = useState<{ title?: string; content?: string }>();
 
   useEffect(() => {
     if (isOpen) {
       setTitle('');
       setContent('');
+      setAttachment(null);
       setErrors({});
     }
   }, [isOpen]);
@@ -33,7 +35,7 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({ isOpe
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave({ title, content });
+      onSave({ title, content, attachment });
       onClose();
     }
   };
@@ -50,7 +52,7 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({ isOpe
               <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">Create Announcement</h3>
               <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-500"><XMarkIcon className="h-6 w-6" /></button>
             </div>
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
               <div>
                 <label htmlFor="announcement-title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
                 <input
@@ -72,6 +74,10 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({ isOpe
                   className={`mt-1 block w-full shadow-sm sm:text-sm ${errors?.content ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`}
                 />
                 {errors?.content && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.content}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Attachment (Optional)</label>
+                <DocumentUpload onFileSelect={setAttachment} />
               </div>
             </div>
           </div>

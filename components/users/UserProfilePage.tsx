@@ -2,29 +2,51 @@ import React, { useState, useRef, FormEvent, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { CameraIcon } from '../icons/Icons';
 
+// Helper components are defined outside the main component to prevent re-creation on every render.
+const FormRow: React.FC<{ label: string, children: React.ReactNode, error?: string }> = ({ label, children, error }) => (
+    <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:py-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 sm:mt-px sm:pt-2">
+            {label}
+        </label>
+        <div className="mt-1 sm:mt-0 sm:col-span-2">
+            {children}
+            {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+    </div>
+);
+
+const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & {hasError?: boolean}> = ({ hasError, ...props }) => (
+    <input
+        {...props}
+        className={`block w-full max-w-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+    />
+);
+
+
 const UserProfilePage: React.FC = () => {
     const { user, updateUser, changePassword } = useAuth();
-
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [mobile, setMobile] = useState('');
-    const [avatarPreview, setAvatarPreview] = useState<string | undefined>();
+    
+    // State for user profile information form
+    const [formData, setFormData] = useState({ name: '', email: '', mobile: '' });
+    const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [infoSuccess, setInfoSuccess] = useState('');
     const [infoErrors, setInfoErrors] = useState<{ name?: string; email?: string; mobile?: string; general?: string }>({});
 
-    // Password change state
-    const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    // State for password change form
+    const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
     const [passwordErrors, setPasswordErrors] = useState<{ current?: string; new?: string; confirm?: string; api?: string; }>({});
     const [passwordSuccess, setPasswordSuccess] = useState('');
 
+    // Effect to synchronize form state with the user object from the auth context.
+    // This runs when the component mounts and whenever the user object instance changes.
     useEffect(() => {
         if (user) {
-            setName(user.name);
-            setEmail(user.email);
-            setMobile(user.mobile || '');
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                mobile: user.mobile || '',
+            });
             setAvatarPreview(user.avatarUrl);
         }
     }, [user]);
@@ -40,19 +62,17 @@ const UserProfilePage: React.FC = () => {
         }
     };
 
+    const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
     const validateInfo = () => {
         const errors: { name?: string; email?: string; mobile?: string } = {};
-        if (!name.trim()) {
-            errors.name = 'Full Name is required.';
-        }
-        if (!email.trim()) {
-            errors.email = 'Email address is required.';
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-            errors.email = 'Please enter a valid email address.';
-        }
-        if (mobile && !/^\+?[0-9\s-]{10,15}$/.test(mobile)) {
-            errors.mobile = 'Please enter a valid mobile number.';
-        }
+        if (!formData.name.trim()) errors.name = 'Full Name is required.';
+        if (!formData.email.trim()) errors.email = 'Email address is required.';
+        else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Please enter a valid email address.';
+        if (formData.mobile && !/^\+?[0-9\s-]{10,15}$/.test(formData.mobile)) errors.mobile = 'Please enter a valid mobile number.';
         setInfoErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -66,9 +86,9 @@ const UserProfilePage: React.FC = () => {
         try {
             await updateUser({
                 ...user,
-                name,
-                email,
-                mobile,
+                name: formData.name,
+                email: formData.email,
+                mobile: formData.mobile,
                 avatarUrl: avatarPreview,
             });
             setInfoSuccess("Profile information updated successfully!");
@@ -79,25 +99,21 @@ const UserProfilePage: React.FC = () => {
         }
     };
     
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setPasswordData(prev => ({ ...prev, [name]: value }));
+    }
+
     const validatePassword = () => {
         const errors: { current?: string; new?: string; confirm?: string; } = {};
-        if (!currentPassword) {
-            errors.current = 'Current password is required.';
-        }
-        if (!newPassword) {
-            errors.new = 'New password is required.';
-        } else if (newPassword.length < 8) {
-            errors.new = 'New password must be at least 8 characters long.';
-        }
-        if (!confirmNewPassword) {
-            errors.confirm = 'Please confirm your new password.';
-        } else if (newPassword !== confirmNewPassword) {
-            errors.confirm = 'New passwords do not match.';
-        }
+        if (!passwordData.currentPassword) errors.current = 'Current password is required.';
+        if (!passwordData.newPassword) errors.new = 'New password is required.';
+        else if (passwordData.newPassword.length < 8) errors.new = 'New password must be at least 8 characters long.';
+        if (!passwordData.confirmNewPassword) errors.confirm = 'Please confirm your new password.';
+        else if (passwordData.newPassword !== passwordData.confirmNewPassword) errors.confirm = 'New passwords do not match.';
         setPasswordErrors(errors);
         return Object.keys(errors).length === 0;
     };
-
 
     const handlePasswordSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -106,15 +122,10 @@ const UserProfilePage: React.FC = () => {
         if(!validatePassword() || !user) return;
 
         try {
-            await changePassword(user.id, currentPassword, newPassword);
+            await changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
             setPasswordSuccess("Password updated successfully!");
-            
-            // Clear fields
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmNewPassword('');
-            
-            setTimeout(() => setPasswordSuccess(''), 3000); // Clear success message after 3s
+            setPasswordData({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+            setTimeout(() => setPasswordSuccess(''), 3000);
         } catch (err: any) {
              setPasswordErrors({ api: err.message || 'An unexpected error occurred.' });
         }
@@ -123,26 +134,6 @@ const UserProfilePage: React.FC = () => {
     if (!user) {
         return <div className="text-center p-8">Loading profile...</div>;
     }
-
-    const FormRow: React.FC<{ label: string, children: React.ReactNode, error?: string }> = ({ label, children, error }) => (
-        <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:py-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 sm:mt-px sm:pt-2">
-                {label}
-            </label>
-            <div className="mt-1 sm:mt-0 sm:col-span-2">
-                {children}
-                {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-            </div>
-        </div>
-    );
-
-    const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & {hasError?: boolean}> = ({ hasError, ...props }) => (
-        <input
-            {...props}
-            className={`block w-full max-w-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
-        />
-    );
-
 
     return (
         <div>
@@ -186,13 +177,13 @@ const UserProfilePage: React.FC = () => {
                                     </div>
                                 </FormRow>
                                 <FormRow label="Full Name" error={infoErrors.name}>
-                                    <TextInput type="text" value={name} onChange={(e) => setName(e.target.value)} required hasError={!!infoErrors.name} />
+                                    <TextInput name="name" type="text" value={formData.name} onChange={handleInfoChange} required hasError={!!infoErrors.name} />
                                 </FormRow>
                                  <FormRow label="Email Address" error={infoErrors.email}>
-                                    <TextInput type="email" value={email} onChange={e => setEmail(e.target.value)} required hasError={!!infoErrors.email} />
+                                    <TextInput name="email" type="email" value={formData.email} onChange={handleInfoChange} required hasError={!!infoErrors.email} />
                                 </FormRow>
                                 <FormRow label="Mobile Number" error={infoErrors.mobile}>
-                                    <TextInput type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+971 50 123 4567" hasError={!!infoErrors.mobile} />
+                                    <TextInput name="mobile" type="tel" value={formData.mobile} onChange={handleInfoChange} placeholder="+971 50 123 4567" hasError={!!infoErrors.mobile} />
                                 </FormRow>
                             </div>
                             {infoSuccess && <p className="mt-4 text-sm text-green-600 dark:text-green-400">{infoSuccess}</p>}
@@ -218,13 +209,13 @@ const UserProfilePage: React.FC = () => {
                             
                             <div className="mt-6 divide-y divide-gray-200 dark:divide-gray-700">
                                 <FormRow label="Current Password" error={passwordErrors.current}>
-                                    <TextInput type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required autoComplete="current-password" hasError={!!passwordErrors.current} />
+                                    <TextInput name="currentPassword" type="password" value={passwordData.currentPassword} onChange={handlePasswordChange} required autoComplete="current-password" hasError={!!passwordErrors.current} />
                                 </FormRow>
                                 <FormRow label="New Password" error={passwordErrors.new}>
-                                    <TextInput type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required autoComplete="new-password" hasError={!!passwordErrors.new} />
+                                    <TextInput name="newPassword" type="password" value={passwordData.newPassword} onChange={handlePasswordChange} required autoComplete="new-password" hasError={!!passwordErrors.new} />
                                 </FormRow>
                                 <FormRow label="Confirm New Password" error={passwordErrors.confirm}>
-                                    <TextInput type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required autoComplete="new-password" hasError={!!passwordErrors.confirm} />
+                                    <TextInput name="confirmNewPassword" type="password" value={passwordData.confirmNewPassword} onChange={handlePasswordChange} required autoComplete="new-password" hasError={!!passwordErrors.confirm} />
                                 </FormRow>
                             </div>
                             {passwordErrors.api && <p className="mt-4 text-sm text-red-600 dark:text-red-400 text-center">{passwordErrors.api}</p>}

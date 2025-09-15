@@ -8,6 +8,14 @@ interface FinancialChartProps {
 }
 
 const FinancialChart: React.FC<FinancialChartProps> = ({ data }) => {
+  if (!data || data.length === 0) {
+    return (
+        <div className="flex items-center justify-center h-full min-h-[250px] text-gray-500 dark:text-gray-400">
+            No financial data available for this period.
+        </div>
+    );
+  }
+  
   return (
     <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>

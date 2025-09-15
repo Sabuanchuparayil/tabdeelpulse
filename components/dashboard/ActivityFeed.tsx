@@ -7,6 +7,14 @@ interface ActivityFeedProps {
 }
 
 const ActivityFeed: React.FC<ActivityFeedProps> = ({ items }) => {
+  if (!items || items.length === 0) {
+    return (
+        <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 py-8">
+            No recent activity to display.
+        </div>
+    );
+  }
+
   return (
     <div className="flow-root">
       <ul role="list" className="-mb-8">
