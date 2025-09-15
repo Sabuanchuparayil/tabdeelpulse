@@ -32,6 +32,7 @@ export type Permission =
   | 'accounts:update'
   | 'accounts:delete'
   | 'announcements:create'
+  | 'announcements:delete'
   | 'system:admin';
 
 export interface Role {

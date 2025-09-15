@@ -10,7 +10,7 @@ export const initialRoles: Role[] = [
     id: 'Administrator',
     name: 'Administrator',
     description: 'Has full access to all system features and settings.',
-    permissions: ['users:create', 'users:read', 'users:update', 'users:delete', 'users:reset_password', 'finance:approve', 'jobs:assign', 'roles:manage', 'projects:create', 'projects:update', 'projects:delete', 'accounts:create', 'accounts:update', 'accounts:delete', 'announcements:create', 'system:admin'],
+    permissions: ['users:create', 'users:read', 'users:update', 'users:delete', 'users:reset_password', 'finance:approve', 'jobs:assign', 'roles:manage', 'projects:create', 'projects:update', 'projects:delete', 'accounts:create', 'accounts:update', 'accounts:delete', 'announcements:create', 'announcements:delete', 'system:admin'],
   },
   {
     id: 'Manager',

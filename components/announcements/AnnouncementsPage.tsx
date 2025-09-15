@@ -1,18 +1,36 @@
 import React, { useState } from 'react';
 import type { Announcement } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
-import { PlusIcon, MegaphoneIcon, PaperClipIcon } from '../icons/Icons';
+import { PlusIcon, MegaphoneIcon, PaperClipIcon, TrashIcon } from '../icons/Icons';
 import CreateAnnouncementModal from './CreateAnnouncementModal';
+import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 
 interface AnnouncementsPageProps {
   announcements: Announcement[];
   onAddAnnouncement: (announcement: { title: string; content: string; attachment: File | null }) => void;
+  onDeleteAnnouncement: (announcementId: string) => void;
 }
 
-const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, onAddAnnouncement }) => {
+const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, onAddAnnouncement, onDeleteAnnouncement }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingAnnouncement, setDeletingAnnouncement] = useState<Announcement | null>(null);
   const { hasPermission } = useAuth();
   const canCreate = hasPermission('announcements:create');
+  const canDelete = hasPermission('announcements:delete');
+
+  const handleDeleteClick = (ann: Announcement) => {
+    setDeletingAnnouncement(ann);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingAnnouncement) {
+      onDeleteAnnouncement(deletingAnnouncement.id);
+    }
+    setDeleteModalOpen(false);
+    setDeletingAnnouncement(null);
+  };
 
   return (
     <div>
@@ -49,15 +67,24 @@ const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, on
       ) : (
         <div className="space-y-6">
           {announcements.map((ann) => (
-            <div key={ann.id} className="bg-white dark:bg-dark-card shadow-md rounded-lg p-6">
+            <div key={ann.id} className="bg-white dark:bg-dark-card shadow-md rounded-lg p-6 relative">
+              {canDelete && (
+                <button
+                  onClick={() => handleDeleteClick(ann)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                  aria-label="Delete announcement"
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              )}
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <MegaphoneIcon className="h-6 w-6 text-primary" />
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-baseline">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{ann.title}</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{ann.timestamp}</p>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white pr-8">{ann.title}</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">{ann.timestamp}</p>
                   </div>
                   <div className="flex items-center space-x-2 mt-1 mb-3">
                       <img src={ann.author.avatarUrl} alt={ann.author.name} className="h-6 w-6 rounded-full"/>
@@ -68,28 +95,15 @@ const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, on
                   {ann.attachmentUrl && (
                     <div className="mt-4">
                       {ann.attachmentType === 'application/pdf' ? (
-                        <object
-                          data={ann.attachmentUrl}
-                          type="application/pdf"
+                        <iframe
+                          src={ann.attachmentUrl}
                           width="100%"
                           height="500px"
                           className="rounded-lg border border-gray-200 dark:border-gray-700"
+                          title={ann.attachmentName || 'Embedded PDF'}
                         >
-                          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-center">
-                            <p className="text-gray-700 dark:text-gray-300">
-                              Your browser does not support embedded PDFs.
-                            </p>
-                            <a
-                              href={ann.attachmentUrl}
-                              download={ann.attachmentName}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-2 inline-block text-primary hover:underline font-semibold"
-                            >
-                              Click here to download the attachment.
-                            </a>
-                          </div>
-                        </object>
+                          <p>Your browser does not support iframes.</p>
+                        </iframe>
                       ) : ann.attachmentType?.startsWith('image/') ? (
                         <img
                           src={ann.attachmentUrl}
@@ -123,6 +137,16 @@ const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ announcements, on
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSave={onAddAnnouncement}
+        />
+      )}
+
+      {deletingAnnouncement && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          itemName={deletingAnnouncement.title}
+          itemType="announcement"
         />
       )}
     </div>

@@ -119,6 +119,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
     }
   };
 
+  const handleDeleteAnnouncement = async (announcementId: string) => {
+    try {
+        const response = await fetch(`${backendUrl}/api/announcements/${announcementId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete announcement');
+        fetchData(); // Refetch data
+    } catch (error) {
+        console.error("Error deleting announcement:", error);
+    }
+  };
+
 
   if (!user) {
     // This should ideally not be reached if App.tsx handles the check, but as a fallback:
@@ -155,7 +167,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
       case 'settings':
         return <SettingsPage isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} />;
       case 'announcements':
-        return <AnnouncementsPage announcements={announcements} onAddAnnouncement={handleAddAnnouncement} />;
+        return <AnnouncementsPage announcements={announcements} onAddAnnouncement={handleAddAnnouncement} onDeleteAnnouncement={handleDeleteAnnouncement} />;
       case 'dashboard':
       default:
         return <DashboardPage onNavigate={handleNavigate} announcements={announcements} />;
