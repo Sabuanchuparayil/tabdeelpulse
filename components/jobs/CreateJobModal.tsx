@@ -1,32 +1,27 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import type { ServiceJob, Project } from '../../types';
+import type { ServiceJob, Project, User } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
-
-const mockTechnicians = [
-    { id: 1, name: 'NOUMAN', avatarUrl: 'https://picsum.photos/seed/nouman/40/40' },
-    { id: 2, name: 'Benhur', avatarUrl: 'https://picsum.photos/seed/benhur/40/40' },
-    { id: 3, name: 'Nakul', avatarUrl: 'https://picsum.photos/seed/nakul/40/40' },
-];
 
 interface CreateJobModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddJob: (job: Omit<ServiceJob, 'id' | 'status'>) => void;
   projects: Project[];
+  technicians: User[];
 }
 
-const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJob, projects }) => {
+const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJob, projects, technicians }) => {
     const [title, setTitle] = useState('');
     const [project, setProject] = useState('');
-    const [technicianName, setTechnicianName] = useState('');
+    const [technicianId, setTechnicianId] = useState('');
     const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
-    const [errors, setErrors] = useState<{ title?: string; project?: string; technicianName?: string; }>({});
+    const [errors, setErrors] = useState<{ title?: string; project?: string; technicianId?: string; }>({});
     
     useEffect(() => {
         if (isOpen) {
             setTitle('');
             setProject('');
-            setTechnicianName('');
+            setTechnicianId('');
             setPriority('Medium');
             setErrors({});
         }
@@ -36,7 +31,7 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJ
         const newErrors: typeof errors = {};
         if (!title.trim()) newErrors.title = 'Job title is required.';
         if (!project) newErrors.project = 'Please select a project.';
-        if (!technicianName) newErrors.technicianName = 'Please assign a technician.';
+        if (!technicianId) newErrors.technicianId = 'Please assign a technician.';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -44,12 +39,12 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJ
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (validate()) {
-            const selectedTechnician = mockTechnicians.find(t => t.name === technicianName);
+            const selectedTechnician = technicians.find(t => t.id === Number(technicianId));
             if (selectedTechnician) {
                 onAddJob({
                     title,
                     project,
-                    technician: selectedTechnician,
+                    technician: { name: selectedTechnician.name, avatarUrl: selectedTechnician.avatarUrl || '' },
                     priority,
                 });
             }
@@ -58,7 +53,7 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJ
     
     if (!isOpen) return null;
 
-    const isFormValid = title.trim() && project && technicianName;
+    const isFormValid = title.trim() && project && technicianId;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -86,11 +81,11 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onAddJ
                             </div>
                             <div>
                                 <label htmlFor="technician" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Technician</label>
-                                <select id="technician" value={technicianName} onChange={e => setTechnicianName(e.target.value)} className={`mt-1 block w-full pl-3 pr-10 py-2 text-base ${errors.technicianName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md`}>
+                                <select id="technician" value={technicianId} onChange={e => setTechnicianId(e.target.value)} className={`mt-1 block w-full pl-3 pr-10 py-2 text-base ${errors.technicianId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md`}>
                                     <option value="" disabled>Select a technician</option>
-                                    {mockTechnicians.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                    {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
-                                {errors.technicianName && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.technicianName}</p>}
+                                {errors.technicianId && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.technicianId}</p>}
                             </div>
                             <div>
                                 <label htmlFor="priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>

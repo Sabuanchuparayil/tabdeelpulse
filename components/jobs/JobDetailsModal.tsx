@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ServiceJob, JobComment } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
-import { XMarkIcon, ChatBubbleBottomCenterTextIcon, PaperClipIcon, ExclamationTriangleIcon } from '../icons/Icons';
+import { XMarkIcon, PaperAirplaneIcon, PaperClipIcon, ExclamationTriangleIcon } from '../icons/Icons';
+import { backendUrl } from '../../config';
 
 interface JobDetailsModalProps {
   isOpen: boolean;
@@ -9,18 +10,66 @@ interface JobDetailsModalProps {
   job: ServiceJob;
 }
 
-const mockComments: JobComment[] = [
-    {id: 1, user: { name: 'Suju', avatarUrl: 'https://picsum.photos/seed/suju/40/40'}, text: 'Please check the main valve first, could be a pressure issue.', timestamp: '2h ago'},
-    {id: 2, user: { name: 'NOUMAN', avatarUrl: 'https://picsum.photos/seed/nouman/40/40'}, text: 'Will do. I am on my way to the site now.', timestamp: '1h ago'},
-];
-
 const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job }) => {
   const { user: currentUser } = useAuth();
+  const [comments, setComments] = useState<JobComment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchComments = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const response = await fetch(`${backendUrl}/api/jobs/${job.id}/comments`);
+        if (!response.ok) throw new Error('Failed to load comments');
+        const data = await response.json();
+        setComments(data);
+    } catch (error) {
+        console.error(error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [job.id]);
+
+  useEffect(() => {
+    if (isOpen) {
+        fetchComments();
+    }
+  }, [isOpen, fetchComments]);
+  
+  const handlePostComment = async () => {
+    if (!newComment.trim() || !currentUser) return;
+    
+    // Optimistic update
+    const optimisticComment: JobComment = {
+        id: Date.now(),
+        user: { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
+        text: newComment.trim(),
+        timestamp: 'Just now',
+    };
+    setComments(prev => [...prev, optimisticComment]);
+    setNewComment('');
+
+    try {
+        const response = await fetch(`${backendUrl}/api/jobs/${job.id}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: newComment.trim(), userId: currentUser.id })
+        });
+        if (!response.ok) throw new Error('Failed to post comment');
+        // If successful, refetch to sync with the server state (gets real ID, etc.)
+        fetchComments();
+    } catch (error) {
+        console.error("Error posting comment:", error);
+        // On error, revert the optimistic update
+        setComments(prev => prev.filter(c => c.id !== optimisticComment.id));
+    }
+  };
+
+
   if (!isOpen) return null;
   
   const handleEscalate = () => {
     alert(`Job ID ${job.id} has been escalated to management. A new communication thread has been created.`);
-    // Here you would typically trigger an API call
   };
 
 
@@ -41,7 +90,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job 
             <div className="md:col-span-2">
                 <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Comments</h4>
                 <div className="space-y-4">
-                  {mockComments.map(comment => (
+                  {isLoading && <p className="text-sm text-gray-500">Loading comments...</p>}
+                  {!isLoading && comments.map(comment => (
                       <div key={comment.id} className="flex items-start space-x-3">
                         <img src={comment.user.avatarUrl} alt={comment.user.name} className="h-8 w-8 rounded-full object-cover" />
                         <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-2">
@@ -58,8 +108,20 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job 
                     <div className="mt-4 flex items-center">
                         <img src={currentUser.avatarUrl || ''} alt={currentUser.name} className="h-8 w-8 rounded-full object-cover mr-3" />
                         <div className="relative flex-grow">
-                            <input type="text" placeholder="Add a comment..." className="w-full pl-4 pr-10 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary"/>
-                            <button className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary"><PaperClipIcon className="h-5 w-5"/></button>
+                            <input 
+                                type="text" 
+                                placeholder="Add a comment..." 
+                                value={newComment}
+                                onChange={e => setNewComment(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handlePostComment() }}
+                                className="w-full pl-4 pr-20 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 border border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+                                <button className="text-gray-400 hover:text-primary"><PaperClipIcon className="h-5 w-5"/></button>
+                                <button onClick={handlePostComment} className="p-1.5 rounded-full bg-primary text-white hover:bg-primary/90 disabled:bg-primary/50" disabled={!newComment.trim()}>
+                                    <PaperAirplaneIcon className="h-4 w-4"/>
+                                </button>
+                            </div>
                         </div>
                     </div>
                  )}

@@ -1,16 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
-import type { User, Notification, Task } from '../../types';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type { User, Notification as NotificationType, Task } from '../../types';
 import { BellIcon, MagnifyingGlassIcon, UserCircleIcon, ArrowRightOnRectangleIcon, Bars3Icon, CreditCardIcon, ChatBubbleBottomCenterTextIcon, CheckCircleIcon, XCircleIcon, SwitchHorizontalIcon, CheckIcon as CheckMarkIcon, ClipboardDocumentCheckIcon } from '../icons/Icons';
 import NotificationDropdown from './NotificationDropdown';
 import { useAuth } from '../../hooks/useAuth';
+import { backendUrl } from '../../config';
 
-const mockNotifications: Notification[] = [
-  { id: '1', title: 'Payment Approved', description: 'Payment of AED 42,500.75 to Bosch Security has been approved.', timestamp: '15m ago', read: false, icon: CheckCircleIcon, link: 'finance' },
-  { id: '2', title: 'New Message', description: 'You have a new message from Shiraj in "Q3 Marketing Campaign".', timestamp: '1h ago', read: false, icon: ChatBubbleBottomCenterTextIcon, link: 'messages' },
-  { id: '3', title: 'Payment Rejected', description: 'Payment to Hikvision Middle East was rejected.', timestamp: '3h ago', read: false, icon: XCircleIcon, link: 'finance' },
-  { id: '4', title: 'Upcoming Payment', description: 'A recurring payment of AED 2850.50 to DEWA is due tomorrow.', timestamp: '1d ago', read: false, icon: CreditCardIcon, link: 'finance' },
-  { id: '5', title: 'System Update', description: 'The system will be down for maintenance tonight at 2 AM.', timestamp: '2d ago', read: true, icon: CreditCardIcon, link: 'dashboard' },
-];
+// A map to convert icon names from the API into actual React components
+const iconMap: { [key: string]: React.ElementType } = {
+  CheckCircleIcon: CheckCircleIcon,
+  ChatBubbleBottomCenterTextIcon: ChatBubbleBottomCenterTextIcon,
+  XCircleIcon: XCircleIcon,
+  CreditCardIcon: CreditCardIcon,
+};
+
+// Define a type for notifications coming from the API
+interface ApiNotification {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  read: boolean;
+  iconName: string; // The API will send the name of the icon
+  link: string;
+}
 
 interface HeaderProps {
   user: User;
@@ -26,11 +38,31 @@ const Header: React.FC<HeaderProps> = ({ user, tasks, onLogout, onNavigate, onTo
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [impersonateOpen, setImpersonateOpen] = useState(false);
 
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<NotificationType[]>([]);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const impersonateRef = useRef<HTMLDivElement>(null);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+        const response = await fetch(`${backendUrl}/api/notifications`);
+        if (!response.ok) throw new Error('Failed to fetch notifications');
+        const data: ApiNotification[] = await response.json();
+        // Convert API data to the frontend's NotificationType
+        const formattedNotifications = data.map(n => ({
+            ...n,
+            icon: iconMap[n.iconName] || CreditCardIcon // Use a default icon if name is invalid
+        }));
+        setNotifications(formattedNotifications);
+    } catch (error) {
+        console.error("Error fetching notifications:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -74,13 +106,15 @@ const Header: React.FC<HeaderProps> = ({ user, tasks, onLogout, onNavigate, onTo
 
   const handleMarkAllRead = () => {
     setNotifications(notifications.map(n => ({ ...n, read: true })));
+    // In a real app, you would also send a request to the backend to update the read status
   }
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: NotificationType) => {
     if (!notification.read) {
         setNotifications(prev =>
             prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
         );
+        // In a real app, you'd send a request to mark this specific notification as read on the backend
     }
     onNavigate(notification.link);
     setNotificationOpen(false);

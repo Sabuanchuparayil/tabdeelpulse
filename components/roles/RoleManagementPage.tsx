@@ -5,33 +5,6 @@ import CreateRoleModal from './CreateRoleModal';
 import { ShieldCheckIcon, PencilIcon, PlusIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
 
-export const initialRoles: Role[] = [
-  {
-    id: 'Administrator',
-    name: 'Administrator',
-    description: 'Has full access to all system features and settings.',
-    permissions: ['users:create', 'users:read', 'users:update', 'users:delete', 'users:reset_password', 'finance:approve', 'jobs:assign', 'roles:manage', 'projects:create', 'projects:update', 'projects:delete', 'accounts:create', 'accounts:update', 'accounts:delete', 'announcements:create', 'announcements:delete', 'system:admin'],
-  },
-  {
-    id: 'Manager',
-    name: 'Manager',
-    description: 'Can manage projects, assign jobs, and oversee team members.',
-    permissions: ['users:read', 'users:update', 'jobs:assign', 'projects:update', 'announcements:create'],
-  },
-  {
-    id: 'Technician',
-    name: 'Technician',
-    description: 'Field executive responsible for completing service jobs.',
-    permissions: ['jobs:assign'],
-  },
-  {
-    id: 'Finance',
-    name: 'Finance',
-    description: 'Manages financial transactions, approvals, and reporting.',
-    permissions: ['finance:approve', 'users:read'],
-  },
-];
-
 const RoleManagementPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

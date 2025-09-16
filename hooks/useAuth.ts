@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import type { User, Permission, Role } from '../types';
-import { initialRoles } from '../components/roles/RoleManagementPage';
 import { backendUrl } from '../config';
 
 interface AuthContextType {
@@ -33,18 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const [roles, setRoles] = useState<Role[]>(() => {
-    try {
-        const storedRoles = localStorage.getItem('tabdeel-pulse-roles');
-        if (storedRoles) {
-            const parsed = JSON.parse(storedRoles);
-            if (Array.isArray(parsed)) return parsed;
-        }
-    } catch (error) {
-        console.error("Failed to parse roles from localStorage", error);
-    }
-    return initialRoles;
-  });
+  const [roles, setRoles] = useState<Role[]>([]);
   
   const enhanceUser = useCallback((user: User): User => {
     const role = roles.find(r => r.id === user.roleId);
@@ -55,14 +43,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         financialLimit: role?.id === 'Administrator' ? 100000 : (role?.id === 'Manager' ? 50000 : 0),
     };
   }, [roles]);
+  
+  const persistRoles = useCallback(async (newRoles: Role[]) => {
+      try {
+          await fetch(`${backendUrl}/api/roles`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newRoles),
+          });
+      } catch (error) {
+          console.error("Failed to persist roles to backend:", error);
+      }
+  }, []);
 
-  useEffect(() => {
-    try {
-        localStorage.setItem('tabdeel-pulse-roles', JSON.stringify(roles));
-    } catch (error) {
-        console.error("Failed to save roles to localStorage", error);
-    }
-  }, [roles]);
+  const handleSetRoles = (newRolesOrUpdater: React.SetStateAction<Role[]>) => {
+        setRoles(prevRoles => {
+            const newRoles = typeof newRolesOrUpdater === 'function'
+                ? newRolesOrUpdater(prevRoles)
+                : newRolesOrUpdater;
+
+            if (JSON.stringify(newRoles) !== JSON.stringify(prevRoles)) {
+                 persistRoles(newRoles);
+            }
+            return newRoles;
+        });
+    };
+
 
   useEffect(() => {
     if (activeUser) {
@@ -73,19 +79,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [activeUser]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchInitialData = async () => {
       try {
-        const response = await fetch(`${backendUrl}/api/users`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const usersFromApi: User[] = await response.json();
+        const [usersRes, rolesRes] = await Promise.all([
+          fetch(`${backendUrl}/api/users`),
+          fetch(`${backendUrl}/api/roles`)
+        ]);
+
+        if (!usersRes.ok) throw new Error('Failed to fetch users');
+        if (!rolesRes.ok) throw new Error('Failed to fetch roles');
+        
+        const usersFromApi = await usersRes.json();
+        const rolesFromApi = await rolesRes.json();
+        
         setRawAllUsers(usersFromApi);
+        setRoles(rolesFromApi);
+
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching initial data:", error);
       }
     };
-    fetchUsers();
+    fetchInitialData();
   }, []);
   
   const login = useCallback(async (email: string, password: string) => {
@@ -214,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       originalUser,
       allUsers,
       roles,
-      setRoles,
+      setRoles: handleSetRoles,
       login,
       logout,
       switchUser,
@@ -223,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUser,
       deleteUser,
       changePassword,
-  }), [user, originalUser, allUsers, roles, login, logout, switchUser, hasPermission, addUser, updateUser, deleteUser, changePassword]);
+  }), [user, originalUser, allUsers, roles, login, logout, switchUser, hasPermission, addUser, updateUser, deleteUser, changePassword, handleSetRoles]);
 
   return React.createElement(AuthContext.Provider, { value }, children);
 };

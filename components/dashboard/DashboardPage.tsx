@@ -12,12 +12,9 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements }) => {
-    // State for existing KPIs
     const [collections, setCollections] = useState<Collection[]>([]);
     const [instructions, setInstructions] = useState<PaymentInstruction[]>([]);
     const [serviceJobs, setServiceJobs] = useState<ServiceJob[]>([]);
-    
-    // State for restored components
     const [financialData, setFinancialData] = useState<FinancialDataPoint[]>([]);
     const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
@@ -35,50 +32,32 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements
                     fetch(`${backendUrl}/api/finance/collections`),
                     fetch(`${backendUrl}/api/finance/payment-instructions`),
                     fetch(`${backendUrl}/api/service-jobs`),
-                    // The following endpoints are placeholders and may fail until implemented
-                    // fetch(`${backendUrl}/api/finance/overview`),
-                    // fetch(`${backendUrl}/api/activity`),
-                    // fetch(`${backendUrl}/api/messages/unread-count`),
+                    fetch(`${backendUrl}/api/finance/overview`),
+                    fetch(`${backendUrl}/api/activity`),
+                    fetch(`${backendUrl}/api/messages/unread-count`),
                 ]);
 
-                const [colRes, instRes, jobRes] = results;
+                const [colRes, instRes, jobRes, finRes, actRes, msgRes] = results;
 
-                if (colRes.status === 'fulfilled' && colRes.value.ok) {
-                    const colData = await colRes.value.json();
-                    setCollections(colData);
-                } else {
-                    console.warn('Dashboard Warning: Failed to fetch collections data.', colRes.status === 'rejected' ? colRes.reason : colRes.value.statusText);
-                }
-
-                if (instRes.status === 'fulfilled' && instRes.value.ok) {
-                    const instData = await instRes.value.json();
-                    setInstructions(instData);
-                } else {
-                    console.warn('Dashboard Warning: Failed to fetch payment instructions data.', instRes.status === 'rejected' ? instRes.reason : instRes.value.statusText);
+                if (colRes.status === 'fulfilled' && colRes.value.ok) setCollections(await colRes.value.json());
+                if (instRes.status === 'fulfilled' && instRes.value.ok) setInstructions(await instRes.value.json());
+                if (jobRes.status === 'fulfilled' && jobRes.value.ok) setServiceJobs(await jobRes.value.json());
+                if (finRes.status === 'fulfilled' && finRes.value.ok) setFinancialData(await finRes.value.json());
+                if (actRes.status === 'fulfilled' && actRes.value.ok) setActivityItems(await actRes.value.json());
+                if (msgRes.status === 'fulfilled' && msgRes.value.ok) {
+                    const msgData = await msgRes.value.json();
+                    setUnreadMessagesCount(msgData.count || 0);
                 }
                 
-                if (jobRes.status === 'fulfilled' && jobRes.value.ok) {
-                    const jobData = await jobRes.value.json();
-                    setServiceJobs(jobData);
-                } else {
-                    console.warn('Dashboard Warning: Failed to fetch service jobs data.', jobRes.status === 'rejected' ? jobRes.reason : jobRes.value.statusText);
-                }
-
-                // Mock data until backend is ready for these
-                setFinancialData([
-                    { name: 'Jan', income: 4000, expenses: 2400 },
-                    { name: 'Feb', income: 3000, expenses: 1398 },
-                    { name: 'Mar', income: 2000, expenses: 9800 },
-                    { name: 'Apr', income: 2780, expenses: 3908 },
-                    { name: 'May', income: 1890, expenses: 4800 },
-                    { name: 'Jun', income: 2390, expenses: 3800 },
-                ]);
-                setActivityItems([]);
-                setUnreadMessagesCount(0);
+                // Log warnings for failed fetches for easier debugging
+                results.forEach(result => {
+                    if (result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.ok)) {
+                        console.warn('Dashboard Warning: A data fetch failed.', result.status === 'rejected' ? result.reason : result.value.statusText);
+                    }
+                });
 
 
             } catch (err: any) {
-                // This catch is for more critical, unexpected errors.
                 console.error("Dashboard critical fetch error:", err);
                 setError("A critical error occurred while loading the dashboard.");
             } finally {

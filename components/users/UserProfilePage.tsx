@@ -1,3 +1,5 @@
+
+
 import React, { useState, useRef, FormEvent, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { CameraIcon } from '../icons/Icons';
@@ -65,15 +67,20 @@ const UserProfilePage: React.FC = () => {
 
     const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        if (name === 'mobile') {
+            // Allow only numbers for the mobile field
+            const numericValue = value.replace(/[^0-9]/g, '');
+            setFormData(prev => ({ ...prev, [name]: numericValue }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const validateInfo = () => {
-        const errors: { name?: string; email?: string; mobile?: string } = {};
+        const errors: { name?: string; email?: string; } = {};
         if (!formData.name.trim()) errors.name = 'Full Name is required.';
         if (!formData.email.trim()) errors.email = 'Email address is required.';
         else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Please enter a valid email address.';
-        if (formData.mobile && !/^\+?[0-9\s-]{10,15}$/.test(formData.mobile)) errors.mobile = 'Please enter a valid mobile number.';
         setInfoErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -199,8 +206,17 @@ const UserProfilePage: React.FC = () => {
                                  <FormRow label="Email Address" error={infoErrors.email}>
                                     <TextInput name="email" type="email" value={formData.email} onChange={handleInfoChange} required hasError={!!infoErrors.email} />
                                 </FormRow>
-                                <FormRow label="Mobile Number" error={infoErrors.mobile}>
-                                    <TextInput name="mobile" type="tel" value={formData.mobile} onChange={handleInfoChange} placeholder="+971 50 123 4567" hasError={!!infoErrors.mobile} />
+                                <FormRow label="Mobile Number">
+                                    <TextInput 
+                                      name="mobile" 
+                                      type="tel" 
+                                      value={formData.mobile} 
+                                      onChange={handleInfoChange} 
+                                      autoComplete="tel"
+                                      pattern="[0-9]*"
+                                      inputMode="numeric"
+                                      placeholder="Your phone number"
+                                    />
                                 </FormRow>
                             </div>
                             {infoSuccess && <p className="mt-4 text-sm text-green-600 dark:text-green-400">{infoSuccess}</p>}

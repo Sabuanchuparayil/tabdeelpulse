@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ServiceJob, JobStatus, Project } from '../../types';
+import { ServiceJob, JobStatus, Project, User } from '../../types';
 import JobDetailsModal from './JobDetailsModal';
 import CreateJobModal from './CreateJobModal';
 import { PlusIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import { backendUrl } from '../../config';
+import { useAuth } from '../../hooks/useAuth';
 
 const PriorityBadge: React.FC<{ priority: ServiceJob['priority'] }> = ({ priority }) => {
     const colors = {
@@ -36,6 +37,9 @@ const ServiceJobsPage: React.FC = () => {
     const [selectedJob, setSelectedJob] = useState<ServiceJob | null>(null);
     const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
+    const { allUsers } = useAuth();
+    const technicians = useMemo(() => allUsers.filter(u => u.role === 'Technician'), [allUsers]);
+
     // State for filters and sorting
     const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
     const [priorityFilter, setPriorityFilter] = useState<ServiceJob['priority'] | 'all'>('all');
@@ -46,7 +50,6 @@ const ServiceJobsPage: React.FC = () => {
             setIsLoading(true);
             setError(null);
             
-            // Fetch both jobs and projects from the backend
             const [jobsRes, projectsRes] = await Promise.all([
                 fetch(`${backendUrl}/api/service-jobs`),
                 fetch(`${backendUrl}/api/projects`)
@@ -93,7 +96,6 @@ const ServiceJobsPage: React.FC = () => {
                 const errorBody = await response.json().catch(() => ({ message: 'An unknown server error occurred.' }));
                 throw new Error(errorBody.message || `Failed to add job. Server responded with status ${response.status}.`);
             }
-            // Add the new job returned from the server (with its DB ID) to our state
             const addedJob = await response.json(); 
             setJobs(prevJobs => [addedJob, ...prevJobs]);
             setCreateModalOpen(false);
@@ -319,6 +321,7 @@ const ServiceJobsPage: React.FC = () => {
                 onClose={() => setCreateModalOpen(false)}
                 onAddJob={handleAddJob}
                 projects={projects}
+                technicians={technicians}
             />
         </div>
     );
