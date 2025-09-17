@@ -431,6 +431,21 @@ app.put('/api/finance/payment-instructions/:id', async (req, res) => {
     }
 });
 
+app.delete('/api/finance/payment-instructions/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Use RETURNING id for a more reliable check of whether a row was deleted.
+        const result = await pool.query('DELETE FROM payment_instructions WHERE id = $1 RETURNING id', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Instruction not found' });
+        }
+        res.status(204).send();
+    } catch (err) {
+        console.error(`Error deleting instruction ${id}:`, err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 app.get('/api/finance/collections', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM collections ORDER BY id DESC');

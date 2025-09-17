@@ -1,9 +1,11 @@
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { PaymentInstruction } from '../../types';
-import { PlusIcon, ClockIcon, CheckCircleIcon, XCircleIcon, DocumentDuplicateIcon, EllipsisVerticalIcon, HandThumbUpIcon, HandThumbDownIcon, BellAlertIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
+import { PlusIcon, ClockIcon, CheckCircleIcon, XCircleIcon, DocumentDuplicateIcon, EllipsisVerticalIcon, HandThumbUpIcon, HandThumbDownIcon, BellAlertIcon, ChevronUpDownIcon, ChevronUpIcon, ChevronDownIcon, TrashIcon } from '../icons/Icons';
 import NewPaymentInstructionModal from './NewPaymentInstructionModal';
 import { useAuth } from '../../hooks/useAuth';
 import TransactionDetailsModal from './TransactionDetailsModal';
+import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 import { backendUrl } from '../../config';
 
 type SortDirection = 'ascending' | 'descending';
@@ -17,7 +19,11 @@ const PaymentInstructionsTab: React.FC = () => {
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: SortDirection } | null>({ key: 'dueDate', direction: 'descending' });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
+    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+    
     const [selectedInstruction, setSelectedInstruction] = useState<PaymentInstruction | null>(null);
+    const [deletingInstruction, setDeletingInstruction] = useState<PaymentInstruction | null>(null);
+    
     const { user, hasPermission } = useAuth();
 
     const fetchInstructions = useCallback(async () => {
@@ -95,6 +101,30 @@ const PaymentInstructionsTab: React.FC = () => {
         setSelectedInstruction(instruction);
         setDetailsModalOpen(true);
     };
+    
+    const handleDeleteClick = (instruction: PaymentInstruction) => {
+        setDeletingInstruction(instruction);
+        setDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deletingInstruction) return;
+        try {
+            const response = await fetch(`${backendUrl}/api/finance/payment-instructions/${deletingInstruction.id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete instruction');
+            }
+            fetchInstructions();
+        } catch (err) {
+            console.error(err);
+            setError('Failed to delete the instruction.');
+        } finally {
+            setDeleteModalOpen(false);
+            setDeletingInstruction(null);
+        }
+    };
 
     const handleAddInstruction = async (data: Omit<PaymentInstruction, 'id' | 'status' | 'currency' | 'submittedBy' | 'history'>) => {
         if (!user) return;
@@ -143,18 +173,25 @@ const PaymentInstructionsTab: React.FC = () => {
   };
 
   const Actions: React.FC<{inst: PaymentInstruction}> = ({ inst }) => {
-    const canApprove = hasPermission('finance:approve') && inst.amount <= user!.financialLimit;
+    const canManage = hasPermission('finance:approve');
+    const canApprove = canManage && inst.amount <= user!.financialLimit;
 
-    if (inst.status === 'Pending' && canApprove) {
-      return (
-        <div className="flex items-center space-x-2">
-          <button onClick={() => handleAction(inst.id, 'Approved')} className="p-2 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900"><HandThumbUpIcon className="h-5 w-5"/></button>
-          <button onClick={() => handleAction(inst.id, 'Rejected')} className="p-2 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900"><HandThumbDownIcon className="h-5 w-5"/></button>
-          <button onClick={() => handleViewDetails(inst)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"><EllipsisVerticalIcon className="h-5 w-5"/></button>
-        </div>
-      );
+    if (!canManage) {
+        return <button onClick={() => handleViewDetails(inst)} className="text-primary hover:text-primary/80 text-sm font-medium">View Details</button>;
     }
-    return <button onClick={() => handleViewDetails(inst)} className="text-primary hover:text-primary/80 text-sm font-medium">View Details</button>;
+
+    return (
+        <div className="flex items-center space-x-2">
+            {inst.status === 'Pending' && (
+                <>
+                    <button onClick={() => handleAction(inst.id, 'Approved')} disabled={!canApprove} className="p-2 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900 disabled:opacity-50 disabled:cursor-not-allowed" title={canApprove ? "Approve" : "Amount exceeds approval limit"}><HandThumbUpIcon className="h-5 w-5"/></button>
+                    <button onClick={() => handleAction(inst.id, 'Rejected')} className="p-2 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900" title="Reject"><HandThumbDownIcon className="h-5 w-5"/></button>
+                </>
+            )}
+            <button onClick={() => handleDeleteClick(inst)} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50" title="Delete"><TrashIcon className="h-5 w-5"/></button>
+            <button onClick={() => handleViewDetails(inst)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" title="View Details"><EllipsisVerticalIcon className="h-5 w-5"/></button>
+        </div>
+    );
   };
 
   return (
@@ -278,6 +315,15 @@ const PaymentInstructionsTab: React.FC = () => {
             onClose={() => setDetailsModalOpen(false)}
             instruction={selectedInstruction}
           />
+      )}
+      {deletingInstruction && (
+        <DeleteConfirmationModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => setDeleteModalOpen(false)}
+            onConfirm={handleConfirmDelete}
+            itemName={`instruction for ${deletingInstruction.payee} (ID: ${deletingInstruction.id})`}
+            itemType="payment instruction"
+        />
       )}
     </div>
   );
