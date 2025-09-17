@@ -20,6 +20,22 @@ let db = {
     users: [], // This will be populated from the database
 };
 
+// Helper function to format date into a "time ago" string
+const timeAgo = (date) => {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " years ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " months ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " days ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " hours ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " minutes ago";
+    return "Just now";
+};
+
 // Function to load users from DB into the in-memory cache
 const loadUsersIntoMemory = async () => {
     try {
@@ -72,7 +88,8 @@ const initializeDatabase = async () => {
                 role TEXT REFERENCES roles(id),
                 status VARCHAR(50) NOT NULL,
                 avatar_url TEXT,
-                mobile VARCHAR(50)
+                mobile VARCHAR(50),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         `);
 
@@ -768,12 +785,13 @@ app.delete('/api/announcements/:id', async (req, res) => {
 // --- NEW MOCK ENDPOINTS to remove frontend mock data ---
 
 app.get('/api/notifications', async (req, res) => {
+    const { userId } = req.query;
     try {
         const pendingPayments = await pool.query(
             "SELECT id, payee, amount FROM payment_instructions WHERE status = 'Pending' ORDER BY id DESC LIMIT 3"
         );
 
-        const notifications = pendingPayments.rows.map((p, index) => ({
+        const paymentNotifications = pendingPayments.rows.map((p, index) => ({
             id: `payment_${p.id}`,
             title: 'Pending Payment Approval',
             description: `Payment of AED ${p.amount} to ${p.payee} requires your approval.`,
@@ -782,21 +800,48 @@ app.get('/api/notifications', async (req, res) => {
             iconName: 'CreditCardIcon',
             link: 'finance'
         }));
-        
-        // Add a mock message notification for variety
-        if (notifications.length < 3) {
-             notifications.push({ 
-                id: 'msg_1', 
-                title: 'New Message', 
-                description: 'You have a new message from Manager Mike in "Project Alpha Launch".', 
-                timestamp: '1h ago', 
-                read: false, 
-                iconName: 'ChatBubbleBottomCenterTextIcon', 
-                link: 'messages' 
-            });
-        }
 
-        res.json(notifications);
+        let messageNotifications = [];
+        if (userId) {
+            const recentMessages = await pool.query(`
+                SELECT
+                    m.id AS message_id,
+                    m.text,
+                    t.title AS thread_title,
+                    u.name AS sender_name
+                FROM 
+                    messages m
+                JOIN 
+                    threads t ON m.thread_id = t.id
+                JOIN
+                    users u ON m.user_id = u.id
+                JOIN 
+                    (
+                        SELECT thread_id, MAX(created_at) as max_created_at
+                        FROM messages
+                        GROUP BY thread_id
+                    ) lm ON m.thread_id = lm.thread_id AND m.created_at = lm.max_created_at
+                WHERE 
+                    m.thread_id IN (SELECT thread_id FROM thread_participants WHERE user_id = $1)
+                    AND m.user_id != $1
+                    AND m.created_at > NOW() - INTERVAL '24 hours'
+                ORDER BY 
+                    m.created_at DESC;
+            `, [userId]);
+
+            messageNotifications = recentMessages.rows.map(msg => ({
+                id: `msg_${msg.message_id}`,
+                title: `New Message in "${msg.thread_title}"`,
+                description: `${msg.sender_name}: ${msg.text.substring(0, 50)}${msg.text.length > 50 ? '...' : ''}`,
+                timestamp: 'Recent',
+                read: false,
+                iconName: 'ChatBubbleBottomCenterTextIcon',
+                link: 'messages'
+            }));
+        }
+        
+        const allNotifications = [...paymentNotifications, ...messageNotifications];
+        res.json(allNotifications);
     } catch (err) {
         console.error('Error fetching notifications:', err);
         res.status(500).json([]);
@@ -833,40 +878,88 @@ app.get('/api/finance/overview', (req, res) => {
     res.json(data);
 });
 
-app.get('/api/activity', (req, res) => {
-    res.json([
-        {
-            id: 1,
-            user: { name: 'Manager Mike', avatarUrl: 'https://picsum.photos/seed/manager/100/100' },
-            action: 'approved payment instruction for',
-            target: 'Bosch Security',
-            timestamp: '2h ago'
-        },
-        {
-            id: 2,
-            user: { name: 'Technician Tom', avatarUrl: 'https://picsum.photos/seed/tech/100/100' },
-            action: 'updated the status of job',
-            target: '#SJ-001',
-            timestamp: 'Yesterday'
+app.get('/api/activity', async (req, res) => {
+    try {
+        let activities = [];
+
+        // 1. Fetch payment instruction activities
+        const paymentResult = await pool.query(
+            "SELECT id, payee, history FROM payment_instructions WHERE jsonb_array_length(history) > 1"
+        );
+        
+        for (const instruction of paymentResult.rows) {
+            const lastAction = instruction.history[instruction.history.length - 1];
+            if (lastAction && lastAction.status !== 'Pending') {
+                const user = db.users.find(u => u.name === lastAction.user);
+                activities.push({
+                    id: `p-${instruction.id}`,
+                    user: { 
+                        name: lastAction.user, 
+                        avatarUrl: user ? user.avatarUrl : 'https://picsum.photos/seed/user/100/100'
+                    },
+                    action: `${lastAction.status.toLowerCase()} a payment instruction for`,
+                    target: instruction.payee,
+                    timestamp: new Date(lastAction.timestamp),
+                });
+            }
         }
-    ]);
+
+        // 2. Fetch new user activities
+        const newUserResult = await pool.query(
+            "SELECT id, name, avatar_url, created_at FROM users WHERE created_at > NOW() - INTERVAL '7 days' AND id > 3" // id > 3 to exclude seeded users
+        );
+
+        for (const user of newUserResult.rows) {
+            activities.push({
+                id: `u-${user.id}`,
+                user: { name: user.name, avatarUrl: user.avatar_url },
+                action: 'joined the team',
+                target: '',
+                timestamp: new Date(user.created_at),
+            });
+        }
+
+        // 3. Sort and format activities
+        activities.sort((a, b) => b.timestamp - a.timestamp);
+        const formattedActivities = activities.slice(0, 5).map(act => ({
+            ...act,
+            timestamp: timeAgo(act.timestamp),
+        }));
+
+        res.json(formattedActivities);
+    } catch (err) {
+        console.error('Error fetching activity log:', err);
+        res.status(500).json([]); // Return empty on error
+    }
 });
 
 app.get('/api/messages/unread-count', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) {
+        return res.json({ count: 0 });
+    }
     try {
-        // A simple simulation: count messages not sent by the admin user (ID 1)
         const result = await pool.query(`
-            SELECT COUNT(m.id)
-            FROM messages m
-            JOIN thread_participants tp ON m.thread_id = tp.thread_id
-            WHERE tp.user_id = 1 AND m.user_id != 1;
-        `);
+            SELECT COUNT(DISTINCT m.thread_id)
+            FROM 
+                messages m
+            JOIN 
+                (
+                    SELECT thread_id, MAX(created_at) as max_created_at
+                    FROM messages
+                    GROUP BY thread_id
+                ) lm ON m.thread_id = lm.thread_id AND m.created_at = lm.max_created_at
+            WHERE 
+                m.thread_id IN (SELECT thread_id FROM thread_participants WHERE user_id = $1)
+                AND m.user_id != $1
+                AND m.created_at > NOW() - INTERVAL '24 hours';
+        `, [userId]);
+        
         const count = parseInt(result.rows[0].count, 10) || 0;
-        // Add a static number to simulate other unread sources for a more dynamic feel
-        res.json({ count: count + 3 });
+        res.json({ count: count });
     } catch (err) {
         console.error("Error fetching unread count:", err);
-        res.status(500).json({ count: 5 }); // Fallback on error
+        res.status(500).json({ count: 0 }); // Fallback on error
     }
 });
 

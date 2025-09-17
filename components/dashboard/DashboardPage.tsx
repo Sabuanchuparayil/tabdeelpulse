@@ -5,6 +5,7 @@ import ActivityFeed from './ActivityFeed';
 import type { Kpi, Announcement, PaymentInstruction, ServiceJob, Collection, FinancialDataPoint, ActivityItem } from '../../types';
 import { MegaphoneIcon } from '../icons/Icons';
 import { backendUrl } from '../../config';
+import { useAuth } from '../../hooks/useAuth';
 
 interface DashboardPageProps {
   onNavigate: (pageId: string) => void;
@@ -12,6 +13,7 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements }) => {
+    const { user } = useAuth();
     const [collections, setCollections] = useState<Collection[]>([]);
     const [instructions, setInstructions] = useState<PaymentInstruction[]>([]);
     const [serviceJobs, setServiceJobs] = useState<ServiceJob[]>([]);
@@ -24,6 +26,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!user) return;
             try {
                 setLoading(true);
                 setError(null);
@@ -34,7 +37,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements
                     fetch(`${backendUrl}/api/service-jobs`),
                     fetch(`${backendUrl}/api/finance/overview`),
                     fetch(`${backendUrl}/api/activity`),
-                    fetch(`${backendUrl}/api/messages/unread-count`),
+                    fetch(`${backendUrl}/api/messages/unread-count?userId=${user.id}`),
                 ]);
 
                 const [colRes, instRes, jobRes, finRes, actRes, msgRes] = results;
@@ -65,7 +68,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, announcements
             }
         };
         fetchData();
-    }, []);
+    }, [user]);
 
     if (loading) {
         return <div className="text-center p-8">Loading dashboard...</div>;

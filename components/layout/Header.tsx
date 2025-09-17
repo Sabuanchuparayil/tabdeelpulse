@@ -45,8 +45,9 @@ const Header: React.FC<HeaderProps> = ({ user, tasks, onLogout, onNavigate, onTo
   const impersonateRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(async () => {
+    if (!user) return;
     try {
-        const response = await fetch(`${backendUrl}/api/notifications`);
+        const response = await fetch(`${backendUrl}/api/notifications?userId=${user.id}`);
         if (!response.ok) throw new Error('Failed to fetch notifications');
         const data: ApiNotification[] = await response.json();
         // Convert API data to the frontend's NotificationType
@@ -58,7 +59,7 @@ const Header: React.FC<HeaderProps> = ({ user, tasks, onLogout, onNavigate, onTo
     } catch (error) {
         console.error("Error fetching notifications:", error);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchNotifications();
