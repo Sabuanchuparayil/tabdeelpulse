@@ -7,7 +7,6 @@ interface AuthContextType {
   originalUser: User | null;
   allUsers: User[];
   roles: Role[];
-  setRoles: React.Dispatch<React.SetStateAction<Role[]>>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   switchUser: (userId: number) => void;
@@ -16,6 +15,8 @@ interface AuthContextType {
   updateUser: (updatedUser: User) => Promise<void>;
   deleteUser: (userId: number) => Promise<void>;
   changePassword: (userId: number, currentPassword: string, newPassword: string) => Promise<void>;
+  createRole: (newRole: Role) => Promise<void>;
+  updateRole: (roleId: string, updatedPermissions: Permission[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,32 +45,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [roles]);
   
-  const persistRoles = useCallback(async (newRoles: Role[]) => {
-      try {
-          await fetch(`${backendUrl}/api/roles`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(newRoles),
-          });
-      } catch (error) {
-          console.error("Failed to persist roles to backend:", error);
-      }
-  }, []);
-
-  const handleSetRoles = (newRolesOrUpdater: React.SetStateAction<Role[]>) => {
-        setRoles(prevRoles => {
-            const newRoles = typeof newRolesOrUpdater === 'function'
-                ? newRolesOrUpdater(prevRoles)
-                : newRolesOrUpdater;
-
-            if (JSON.stringify(newRoles) !== JSON.stringify(prevRoles)) {
-                 persistRoles(newRoles);
-            }
-            return newRoles;
-        });
-    };
-
-
   useEffect(() => {
     if (activeUser) {
         localStorage.setItem('tabdeel-pulse-user', JSON.stringify(activeUser));
@@ -213,6 +188,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const createRole = useCallback(async (newRole: Role) => {
+    try {
+        const response = await fetch(`${backendUrl}/api/roles`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newRole),
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Failed to create role.' }));
+            throw new Error(errorData.message);
+        }
+        const createdRoleFromApi = await response.json();
+        setRoles(prevRoles => [...prevRoles, createdRoleFromApi]);
+    } catch (error) {
+        console.error("Error creating role:", error);
+        throw error; 
+    }
+  }, []);
+
+  const updateRole = useCallback(async (roleId: string, updatedPermissions: Permission[]) => {
+    try {
+        const response = await fetch(`${backendUrl}/api/roles/${roleId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ permissions: updatedPermissions }),
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Failed to update role.' }));
+            throw new Error(errorData.message);
+        }
+        const updatedRoleFromApi = await response.json();
+        setRoles(prevRoles => prevRoles.map(role => 
+            role.id === roleId ? updatedRoleFromApi : role
+        ));
+    } catch (error) {
+        console.error("Error updating role:", error);
+        throw error;
+    }
+  }, []);
+
   const user = useMemo(() => activeUser ? enhanceUser(activeUser) : null, [activeUser, enhanceUser]);
 
   const hasPermission = useCallback((permission: Permission): boolean => {
@@ -228,7 +243,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       originalUser,
       allUsers,
       roles,
-      setRoles: handleSetRoles,
       login,
       logout,
       switchUser,
@@ -237,7 +251,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUser,
       deleteUser,
       changePassword,
-  }), [user, originalUser, allUsers, roles, login, logout, switchUser, hasPermission, addUser, updateUser, deleteUser, changePassword, handleSetRoles]);
+      createRole,
+      updateRole,
+  }), [user, originalUser, allUsers, roles, login, logout, switchUser, hasPermission, addUser, updateUser, deleteUser, changePassword, createRole, updateRole]);
 
   return React.createElement(AuthContext.Provider, { value }, children);
 };

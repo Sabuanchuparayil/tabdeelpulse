@@ -1,26 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { User, Role, UserStatus } from '../../types';
-import { UserPlusIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon, CheckCircleIcon, XCircleIcon, UserCircleIcon, KeyIcon } from '../icons/Icons';
+import { UserPlusIcon, EllipsisVerticalIcon, PencilIcon, CheckCircleIcon, XCircleIcon, UserCircleIcon, KeyIcon } from '../icons/Icons';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
-import DeleteConfirmationModal from './DeleteConfirmationModal';
 import ConfirmationModal from './ConfirmationModal';
 import { useAuth } from '../../hooks/useAuth';
 
 
 const UserManagementPage: React.FC = () => {
-  const { allUsers, roles, addUser, updateUser, deleteUser, user: currentUser, hasPermission } = useAuth();
+  const { allUsers, roles, addUser, updateUser, user: currentUser, hasPermission } = useAuth();
   
   // Modal states
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isConfirmStatusModalOpen, setConfirmStatusModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
   
   // State for selected user
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [statusChangeUser, setStatusChangeUser] = useState<User | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
 
@@ -37,20 +34,17 @@ const UserManagementPage: React.FC = () => {
     setEditingUser(null);
   }
 
-  const handleConfirmToggleStatus = () => {
+  const handleConfirmToggleStatus = async () => {
     if (statusChangeUser) {
-        updateUser({ ...statusChangeUser, status: statusChangeUser.status === 'Active' ? 'Disabled' : 'Active' });
+        try {
+            await updateUser({ ...statusChangeUser, status: statusChangeUser.status === 'Active' ? 'Disabled' : 'Active' });
+        } catch (error) {
+            console.error("Failed to update user status:", error);
+            alert('There was an error updating the user status. Please try again.');
+        }
     }
     setConfirmStatusModalOpen(false);
     setStatusChangeUser(null);
-  };
-  
-  const handleConfirmDelete = () => {
-    if (deletingUser) {
-      deleteUser(deletingUser.id);
-      setDeleteModalOpen(false);
-      setDeletingUser(null);
-    }
   };
   
   const handleConfirmResetPassword = () => {
@@ -67,11 +61,6 @@ const UserManagementPage: React.FC = () => {
     setEditingUser(user);
     setEditModalOpen(true);
   };
-  
-  const handleDeleteClick = (user: User) => {
-    setDeletingUser(user);
-    setDeleteModalOpen(true);
-  }
   
   const handleToggleStatusClick = (user: User) => {
     setStatusChangeUser(user);
@@ -102,7 +91,6 @@ const UserManagementPage: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const canUpdate = hasPermission('users:update');
-    const canDelete = hasPermission('users:delete');
     const canResetPassword = hasPermission('users:reset_password');
 
     useEffect(() => {
@@ -141,12 +129,6 @@ const UserManagementPage: React.FC = () => {
                             <button onClick={() => { handleResetPasswordClick(user); setIsOpen(false); }} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <KeyIcon className="h-4 w-4 mr-3" />
                                 Reset Password
-                            </button>
-                        )}
-                        {canDelete && (
-                            <button onClick={() => { handleDeleteClick(user); setIsOpen(false); }} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                <TrashIcon className="h-4 w-4 mr-3" />
-                                Delete
                             </button>
                         )}
                     </div>
@@ -263,16 +245,6 @@ const UserManagementPage: React.FC = () => {
           user={editingUser}
           onUpdateUser={handleUpdateUser}
           roles={roles}
-        />
-      )}
-
-      {deletingUser && (
-        <DeleteConfirmationModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setDeleteModalOpen(false)}
-          onConfirm={handleConfirmDelete}
-          itemName={deletingUser.name}
-          itemType="user"
         />
       )}
       

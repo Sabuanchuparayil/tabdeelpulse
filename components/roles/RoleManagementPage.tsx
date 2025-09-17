@@ -9,26 +9,32 @@ const RoleManagementPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const { roles, setRoles, hasPermission } = useAuth();
+  const { roles, createRole, updateRole, hasPermission } = useAuth();
 
   const handleEditRole = (role: Role) => {
     setSelectedRole(role);
     setIsEditModalOpen(true);
   };
 
-  const handleCreateRole = (newRole: Role) => {
-    setRoles(prevRoles => [...prevRoles, newRole]);
-    setIsCreateModalOpen(false);
+  const handleCreateRole = async (newRole: Role) => {
+    try {
+      await createRole(newRole);
+      setIsCreateModalOpen(false);
+    } catch (error: any) {
+      console.error("Failed to create role:", error);
+      alert(`Error creating role: ${error.message}`);
+    }
   };
 
-  const handleUpdateRolePermissions = (roleId: string, updatedPermissions: Permission[]) => {
-    setRoles(prevRoles =>
-      prevRoles.map(role =>
-        role.id === roleId ? { ...role, permissions: updatedPermissions } : role
-      )
-    );
-    setIsEditModalOpen(false);
-    setSelectedRole(null);
+  const handleUpdateRolePermissions = async (roleId: string, updatedPermissions: Permission[]) => {
+    try {
+      await updateRole(roleId, updatedPermissions);
+      setIsEditModalOpen(false);
+      setSelectedRole(null);
+    } catch (error: any) {
+      console.error("Failed to update role:", error);
+      alert(`Error updating role: ${error.message}`);
+    }
   };
 
   return (

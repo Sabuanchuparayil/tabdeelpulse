@@ -271,26 +271,46 @@ app.get('/api/roles', async (req, res) => {
     }
 });
 
-app.put('/api/roles', async (req, res) => {
-    const roles = req.body;
-    if (!Array.isArray(roles)) {
-        return res.status(400).json({ message: 'Request body must be an array of roles.' });
+app.post('/api/roles', async (req, res) => {
+    const { id, name, description, permissions } = req.body;
+    if (!id || !name) {
+        return res.status(400).json({ message: 'Role ID and name are required.' });
     }
-    const client = await pool.connect();
     try {
-        await client.query('BEGIN');
-        await client.query('DELETE FROM roles');
-        for (const role of roles) {
-            await client.query('INSERT INTO roles (id, name, description, permissions) VALUES ($1, $2, $3, $4)', [role.id, role.name, role.description, JSON.stringify(role.permissions)]);
-        }
-        await client.query('COMMIT');
-        res.status(200).json({ message: 'Roles updated successfully' });
+        const query = 'INSERT INTO roles (id, name, description, permissions) VALUES ($1, $2, $3, $4) RETURNING *';
+        const result = await pool.query(query, [id, name, description, JSON.stringify(permissions || [])]);
+        res.status(201).json(result.rows[0]);
     } catch (err) {
-        await client.query('ROLLBACK');
-        console.error('Error updating roles:', err);
+        console.error('Error creating role:', err);
+        if (err.code === '23505') { // unique_violation
+            return res.status(409).json({ message: `Role with ID '${id}' already exists.` });
+        }
         res.status(500).json({ message: 'Internal Server Error' });
-    } finally {
-        client.release();
+    }
+});
+
+app.put('/api/roles/:id', async (req, res) => {
+    const { id } = req.params;
+    const { permissions } = req.body; // Only permissions are updated from the UI
+
+    if (permissions === undefined) {
+        return res.status(400).json({ message: 'Permissions field is required.' });
+    }
+    if (!Array.isArray(permissions)) {
+        return res.status(400).json({ message: 'Permissions must be an array.' });
+    }
+
+    try {
+        const query = 'UPDATE roles SET permissions = $1 WHERE id = $2 RETURNING *';
+        const result = await pool.query(query, [JSON.stringify(permissions), id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Role not found' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(`Error updating role ${id}:`, err);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
