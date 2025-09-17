@@ -344,10 +344,39 @@ app.post('/api/users', async (req, res) => {
 
 app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, email, roleId, status, avatarUrl, mobile } = req.body;
+    const body = req.body;
+
     try {
-        const query = 'UPDATE users SET name = $1, email = $2, role = $3, status = $4, avatar_url = $5, mobile = $6 WHERE id = $7 RETURNING id, name, email, role as "roleId", status, avatar_url as "avatarUrl", mobile';
-        const result = await pool.query(query, [name, email, roleId, status, avatarUrl, mobile || null, id]);
+        const fields = {
+            name: body.name,
+            email: body.email,
+            role: body.roleId,
+            status: body.status,
+            avatar_url: body.avatarUrl,
+            mobile: body.mobile,
+        };
+
+        const updates = [];
+        const values = [];
+        let queryIndex = 1;
+
+        for (const [key, value] of Object.entries(fields)) {
+            if (value !== undefined) {
+                updates.push(`${key} = $${queryIndex++}`);
+                values.push(value);
+            }
+        }
+
+        if (updates.length === 0) {
+            const currentUser = await pool.query('SELECT id, name, email, role as "roleId", status, avatar_url as "avatarUrl", mobile FROM users WHERE id = $1', [id]);
+            return res.json(currentUser.rows[0]);
+        }
+        
+        values.push(id);
+        const query = `UPDATE users SET ${updates.join(', ')} WHERE id = $${queryIndex} RETURNING id, name, email, role as "roleId", status, avatar_url as "avatarUrl", mobile`;
+        
+        const result = await pool.query(query, values);
+
         if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' });
 
         const updatedUser = result.rows[0];
@@ -868,14 +897,53 @@ app.post('/api/jobs/:jobId/comments', (req, res) => {
 });
 
 
-app.get('/api/finance/overview', (req, res) => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const data = months.map(month => ({
-        name: month,
-        income: Math.floor(Math.random() * (8000 - 2000 + 1)) + 2000,
-        expenses: Math.floor(Math.random() * (7000 - 1000 + 1)) + 1000,
-    }));
-    res.json(data);
+app.get('/api/finance/overview', async (req, res) => {
+    try {
+        const query = `
+            WITH months AS (
+                SELECT TO_CHAR(date, 'YYYY-MM') AS yyyy_mm,
+                       TO_CHAR(date, 'Mon') AS month_name,
+                       EXTRACT(YEAR FROM date) AS year,
+                       EXTRACT(MONTH FROM date) AS month
+                FROM generate_series(
+                    date_trunc('month', NOW() - interval '5 months'),
+                    date_trunc('month', NOW()),
+                    '1 month'
+                ) AS date
+            ),
+            monthly_income AS (
+                SELECT
+                    TO_CHAR(date, 'YYYY-MM') as yyyy_mm,
+                    SUM(amount) as total_income
+                FROM collections
+                WHERE date >= date_trunc('month', NOW() - interval '5 months')
+                GROUP BY 1
+            ),
+            monthly_expenses AS (
+                SELECT
+                    TO_CHAR(due_date, 'YYYY-MM') as yyyy_mm,
+                    SUM(amount) as total_expenses
+                FROM payment_instructions
+                WHERE status = 'Approved'
+                AND due_date >= date_trunc('month', NOW() - interval '5 months')
+                GROUP BY 1
+            )
+            SELECT 
+                m.month_name as name,
+                COALESCE(i.total_income, 0)::float as income,
+                COALESCE(e.total_expenses, 0)::float as expenses
+            FROM months m
+            LEFT JOIN monthly_income i ON m.yyyy_mm = i.yyyy_mm
+            LEFT JOIN monthly_expenses e ON m.yyyy_mm = e.yyyy_mm
+            ORDER BY m.year, m.month;
+        `;
+
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching financial overview:', err);
+        res.status(500).json([]);
+    }
 });
 
 app.get('/api/activity', async (req, res) => {
