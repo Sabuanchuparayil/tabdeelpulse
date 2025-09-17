@@ -46,7 +46,7 @@ const MessagesPage: React.FC = () => {
 
         const optimisticMessage: Message = {
             id: Date.now(),
-            user: { name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
+            user: { id: currentUser.id, name: currentUser.name, avatarUrl: currentUser.avatarUrl || '' },
             text: messageText,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
@@ -74,8 +74,8 @@ const MessagesPage: React.FC = () => {
             if (!response.ok) {
                 throw new Error('Failed to send message.');
             }
-            // Optional: refetch threads to get the real message ID and timestamp from DB
-            // fetchThreads(); 
+            // Refetch to sync with server state (gets real ID, etc.)
+            fetchThreads(); 
         } catch (err) {
             console.error(err);
             setError("Failed to send message. Please try again.");
@@ -120,6 +120,43 @@ const MessagesPage: React.FC = () => {
         } catch (err: any) {
             console.error(err);
             setError(err.message || "Failed to update participants. Please try again.");
+        }
+    };
+
+    const handleDeleteMessage = async (threadId: string, messageId: number) => {
+        if (!currentUser) return;
+
+        const originalThreads = [...threads];
+        // Optimistic update
+        setThreads(prevThreads => prevThreads.map(thread => {
+            if (thread.id === threadId) {
+                const updatedMessages = thread.messages.filter(msg => msg.id !== messageId);
+                const lastMessage = updatedMessages[updatedMessages.length - 1];
+                return {
+                    ...thread,
+                    messages: updatedMessages,
+                    lastMessage: lastMessage ? lastMessage.text : 'No messages yet.',
+                    timestamp: lastMessage ? lastMessage.timestamp : thread.timestamp,
+                };
+            }
+            return thread;
+        }));
+
+        try {
+            const response = await fetch(`${backendUrl}/api/messages/${messageId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id }),
+            });
+
+            if (!response.ok) {
+                 throw new Error('Failed to delete message on the server.');
+            }
+
+        } catch (err) {
+            console.error(err);
+            setError("Failed to delete message. Reverting changes.");
+            setThreads(originalThreads); // Revert on failure
         }
     };
 
@@ -176,6 +213,7 @@ const MessagesPage: React.FC = () => {
                         onBack={() => setSelectedThreadId(null)}
                         onSendMessage={handleSendMessage}
                         onUpdateParticipants={handleUpdateParticipants}
+                        onDeleteMessage={handleDeleteMessage}
                     />
                  ) : (
                     <div className="flex-1 items-center justify-center text-gray-500 hidden md:flex">Select a conversation</div>

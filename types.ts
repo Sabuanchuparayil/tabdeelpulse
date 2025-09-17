@@ -151,7 +151,7 @@ export interface JobComment {
 // Messaging Module Types
 export interface Message {
     id: number;
-    user: { name: string; avatarUrl: string };
+    user: { id: number; name: string; avatarUrl: string };
     text: string;
     timestamp: string;
 }

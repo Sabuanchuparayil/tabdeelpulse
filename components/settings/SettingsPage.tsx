@@ -28,10 +28,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ isDarkMode, onToggleDarkMod
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">General Settings</h3>
           <div className="mt-6">
-            <FormRow label="Company Name">
-              <input type="text" defaultValue="TabdeelGlob" className="block w-full max-w-lg shadow-sm focus:ring-primary focus:border-primary sm:text-sm border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-            </FormRow>
-
             <FormRow label="Theme" description="Choose between a light or dark interface.">
               <div className="flex items-center space-x-2">
                   <SunIcon className={`h-6 w-6 ${!isDarkMode ? 'text-primary' : 'text-gray-400'}`} />

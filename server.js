@@ -785,6 +785,37 @@ app.put('/api/threads/:threadId/participants', async (req, res) => {
     }
 });
 
+app.delete('/api/messages/:messageId', async (req, res) => {
+    const { messageId } = req.params;
+    const { userId } = req.body; // Sent from frontend for authorization
+
+    if (!userId) {
+        return res.status(401).json({ message: 'Authentication required.' });
+    }
+
+    try {
+        const result = await pool.query(
+            'DELETE FROM messages WHERE id = $1 AND user_id = $2 RETURNING id',
+            [messageId, userId]
+        );
+
+        if (result.rowCount === 0) {
+            // Check if the message exists but belongs to another user
+            const check = await pool.query('SELECT user_id FROM messages WHERE id = $1', [messageId]);
+            if (check.rowCount > 0) {
+                return res.status(403).json({ message: 'You are not authorized to delete this message.' });
+            } else {
+                return res.status(404).json({ message: 'Message not found.' });
+            }
+        }
+
+        res.status(204).send(); // Success, no content
+    } catch (err) {
+        console.error(`Error deleting message ${messageId}:`, err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 
 // --- Tasks ---
 app.get('/api/tasks', async (req, res) => {

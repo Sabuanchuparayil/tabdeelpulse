@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import type { Thread } from '../../types';
-import { PaperClipIcon, SparklesIcon, ArrowLeftIcon, PaperAirplaneIcon, PencilIcon } from '../icons/Icons';
+import type { Thread, Message } from '../../types';
+import { PaperClipIcon, SparklesIcon, ArrowLeftIcon, PaperAirplaneIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { GoogleGenAI } from "@google/genai";
 import ManageParticipantsModal from './ManageParticipantsModal';
+import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 import { useAuth } from '../../hooks/useAuth';
 
 interface ChatViewProps {
@@ -10,14 +11,17 @@ interface ChatViewProps {
   onBack: () => void;
   onSendMessage: (threadId: string, messageText: string) => void;
   onUpdateParticipants: (threadId: string, participantIds: number[]) => void;
+  onDeleteMessage: (threadId: string, messageId: number) => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUpdateParticipants }) => {
+const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUpdateParticipants, onDeleteMessage }) => {
     const [summary, setSummary] = useState<string>('');
     const [isLoadingSummary, setIsLoadingSummary] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [newMessage, setNewMessage] = useState('');
     const [isManageModalOpen, setManageModalOpen] = useState(false);
+    const [deletingMessage, setDeletingMessage] = useState<Message | null>(null);
+
     const { user: currentUser, allUsers } = useAuth();
 
     const handleSummarize = async () => {
@@ -59,6 +63,13 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUp
     const handleSaveParticipants = (threadId: string, participantIds: number[]) => {
         onUpdateParticipants(threadId, participantIds);
         setManageModalOpen(false);
+    };
+
+    const handleConfirmDelete = () => {
+        if (deletingMessage) {
+            onDeleteMessage(thread.id, deletingMessage.id);
+        }
+        setDeletingMessage(null);
     };
 
     if (!currentUser) return null;
@@ -115,7 +126,7 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUp
       {/* Messages */}
       <div className="flex-1 p-4 space-y-4 overflow-y-auto">
         {thread.messages.map(message => (
-          <div key={message.id} className="flex items-start space-x-3">
+          <div key={message.id} className="flex items-start space-x-3 group">
             <img src={message.user.avatarUrl} alt={message.user.name} className="h-10 w-10 rounded-full object-cover" />
             <div className="flex-1">
               <div className="flex items-baseline space-x-2">
@@ -124,6 +135,15 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUp
               </div>
               <p className="mt-1 text-gray-700 dark:text-gray-300">{message.text}</p>
             </div>
+             {message.user.id === currentUser.id && (
+                <button
+                    onClick={() => setDeletingMessage(message)}
+                    className="p-1 text-gray-400 hover:text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Delete message"
+                >
+                    <TrashIcon className="h-4 w-4" />
+                </button>
+            )}
           </div>
         ))}
       </div>
@@ -161,6 +181,16 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUp
         allUsers={allUsers}
         currentUser={currentUser}
       />
+
+      {deletingMessage && (
+        <DeleteConfirmationModal
+            isOpen={!!deletingMessage}
+            onClose={() => setDeletingMessage(null)}
+            onConfirm={handleConfirmDelete}
+            itemName="this message"
+            itemType="message"
+        />
+      )}
     </div>
   );
 };
