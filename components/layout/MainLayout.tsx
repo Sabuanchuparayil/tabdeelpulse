@@ -29,7 +29,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
   const [tasks, setTasks] = useState<Task[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const { user, originalUser, switchUser } = useAuth();
+  const { user, originalUser, switchUser, allUsers } = useAuth();
 
   const fetchData = useCallback(async () => {
     try {
@@ -165,7 +165,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
       case 'messages':
         return <MessagesPage />;
       case 'tasks':
-        return <TaskManagementPage tasks={tasks} onAddTask={handleAddTask} onToggleTask={handleToggleTask} onDeleteTask={handleDeleteTask} />;
+        return <TaskManagementPage tasks={tasks} onAddTask={handleAddTask} onToggleTask={handleToggleTask} onDeleteTask={handleDeleteTask} allUsers={allUsers} />;
       case 'users':
         return <UserManagementPage />;
       case 'profile':

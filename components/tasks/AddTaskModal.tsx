@@ -1,17 +1,19 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import type { Task } from '../../types';
+import type { Task, User } from '../../types';
 import { XMarkIcon } from '../icons/Icons';
 
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (task: Omit<Task, 'id' | 'isCompleted'>) => void;
+  users: User[];
 }
 
-const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) => {
+const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave, users }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [assignedToUserId, setAssignedToUserId] = useState<string>('');
   const [errors, setErrors] = useState<{ name?: string; description?: string; deadline?: string }>();
 
   useEffect(() => {
@@ -19,6 +21,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) 
       setName('');
       setDescription('');
       setDeadline(new Date().toISOString().split('T')[0]); // Default to today
+      setAssignedToUserId('');
       setErrors({});
     }
   }, [isOpen]);
@@ -35,7 +38,15 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave({ name, description, deadline });
+      const taskData: Omit<Task, 'id' | 'isCompleted'> = {
+        name,
+        description,
+        deadline,
+      };
+      if (assignedToUserId) {
+        taskData.assignedToUserId = Number(assignedToUserId);
+      }
+      onSave(taskData);
       onClose();
     }
   };
@@ -85,6 +96,20 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) 
                   className={`mt-1 block w-full shadow-sm sm:text-sm ${errors?.deadline ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`}
                 />
                 {errors?.deadline && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.deadline}</p>}
+              </div>
+              <div>
+                <label htmlFor="task-assignee" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign To (Optional)</label>
+                <select
+                  id="task-assignee"
+                  value={assignedToUserId}
+                  onChange={e => setAssignedToUserId(e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

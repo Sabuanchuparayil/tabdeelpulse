@@ -180,7 +180,8 @@ const initializeDatabase = async () => {
                 name VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
                 deadline DATE NOT NULL,
-                is_completed BOOLEAN DEFAULT FALSE
+                is_completed BOOLEAN DEFAULT FALSE,
+                assigned_to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
             );
         `);
         
@@ -648,28 +649,55 @@ app.post('/api/threads/:threadId/messages', async (req, res) => {
 // --- Tasks ---
 app.get('/api/tasks', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM tasks ORDER BY deadline ASC, id DESC');
+        const result = await pool.query(`
+            SELECT 
+                t.id, 
+                t.name,
+                t.description, 
+                t.deadline, 
+                t.is_completed, 
+                t.assigned_to_user_id,
+                u.name as assigned_to_name,
+                u.avatar_url as assigned_to_avatar_url
+            FROM tasks t
+            LEFT JOIN users u ON t.assigned_to_user_id = u.id
+            ORDER BY t.deadline ASC, t.id DESC
+        `);
         res.json(result.rows.map(r => ({
             id: String(r.id),
             name: r.name,
             description: r.description,
             deadline: r.deadline,
-            isCompleted: r.is_completed
+            isCompleted: r.is_completed,
+            assignedToUserId: r.assigned_to_user_id,
+            assignedTo: r.assigned_to_user_id ? { name: r.assigned_to_name, avatarUrl: r.assigned_to_avatar_url } : undefined
         })));
     } catch (err) { res.status(500).json({ message: 'Internal Server Error' }); }
 });
 app.post('/api/tasks', async (req, res) => {
-    const { name, description, deadline } = req.body;
+    const { name, description, deadline, assignedToUserId } = req.body;
     try {
-        const query = 'INSERT INTO tasks (name, description, deadline, is_completed) VALUES ($1, $2, $3, $4) RETURNING *';
-        const result = await pool.query(query, [name, description, deadline, false]);
-        const r = result.rows[0];
+        const query = 'INSERT INTO tasks (name, description, deadline, is_completed, assigned_to_user_id) VALUES ($1, $2, $3, $4, $5) RETURNING id';
+        const result = await pool.query(query, [name, description, deadline, false, assignedToUserId || null]);
+        const newTaskId = result.rows[0].id;
+
+        const fullTaskResult = await pool.query(`
+            SELECT 
+                t.id, t.name, t.description, t.deadline, t.is_completed, t.assigned_to_user_id,
+                u.name as assigned_to_name, u.avatar_url as assigned_to_avatar_url
+            FROM tasks t
+            LEFT JOIN users u ON t.assigned_to_user_id = u.id
+            WHERE t.id = $1
+        `, [newTaskId]);
+        
+        const r = fullTaskResult.rows[0];
         res.status(201).json({
             id: String(r.id),
             name: r.name,
             description: r.description,
             deadline: r.deadline,
-            isCompleted: r.is_completed
+            isCompleted: r.is_completed,
+            assignedTo: r.assigned_to_user_id ? { name: r.assigned_to_name, avatarUrl: r.assigned_to_avatar_url } : undefined
         });
     } catch (err) { res.status(500).json({ message: 'Internal Server Error' }); }
 });

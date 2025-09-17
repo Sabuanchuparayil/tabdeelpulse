@@ -1,17 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import type { Task } from '../../types';
+import type { Task, User } from '../../types';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import AddTaskModal from './AddTaskModal';
 import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 
 interface TaskManagementPageProps {
   tasks: Task[];
+  allUsers: User[];
   onAddTask: (task: Omit<Task, 'id' | 'isCompleted'>) => void;
   onToggleTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
 }
 
-const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTask, onToggleTask, onDeleteTask }) => {
+const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, allUsers, onAddTask, onToggleTask, onDeleteTask }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
@@ -62,6 +63,11 @@ const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTas
           Due: {task.deadline}
         </p>
       </div>
+      {task.assignedTo && (
+        <div className="flex items-center ml-auto pl-4 flex-shrink-0" title={`Assigned to ${task.assignedTo.name}`}>
+          <img src={task.assignedTo.avatarUrl} alt={task.assignedTo.name} className="h-8 w-8 rounded-full object-cover" />
+        </div>
+      )}
       <button
         onClick={() => handleDeleteClick(task)}
         className="ml-4 p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -113,6 +119,7 @@ const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTas
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={onAddTask}
+        users={allUsers}
       />
 
       {deletingTask && (

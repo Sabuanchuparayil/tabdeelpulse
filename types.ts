@@ -190,6 +190,11 @@ export interface Task {
   description: string;
   deadline: string; // YYYY-MM-DD
   isCompleted: boolean;
+  assignedToUserId?: number;
+  assignedTo?: {
+    name: string;
+    avatarUrl: string;
+  };
 }
 
 // Announcement Type
