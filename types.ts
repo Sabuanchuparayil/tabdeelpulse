@@ -186,6 +186,7 @@ export interface AccountHead {
 // Task Management Types
 export interface Task {
   id: string;
+  name: string;
   description: string;
   deadline: string; // YYYY-MM-DD
   isCompleted: boolean;

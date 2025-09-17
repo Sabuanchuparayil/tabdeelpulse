@@ -9,12 +9,14 @@ interface AddTaskModalProps {
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) => {
+  const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [errors, setErrors] = useState<{ description?: string; deadline?: string }>();
+  const [errors, setErrors] = useState<{ name?: string; description?: string; deadline?: string }>();
 
   useEffect(() => {
     if (isOpen) {
+      setName('');
       setDescription('');
       setDeadline(new Date().toISOString().split('T')[0]); // Default to today
       setErrors({});
@@ -23,6 +25,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) 
 
   const validate = () => {
     const newErrors: typeof errors = {};
+    if (!name.trim()) newErrors.name = 'Task name is required.';
     if (!description.trim()) newErrors.description = 'Task description is required.';
     if (!deadline) newErrors.deadline = 'A deadline is required.';
     setErrors(newErrors);
@@ -32,7 +35,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave({ description, deadline });
+      onSave({ name, description, deadline });
       onClose();
     }
   };
@@ -50,6 +53,17 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSave }) 
               <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-500"><XMarkIcon className="h-6 w-6" /></button>
             </div>
             <div className="mt-6 space-y-4">
+              <div>
+                <label htmlFor="task-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Task Name</label>
+                <input
+                  type="text"
+                  id="task-name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className={`mt-1 block w-full shadow-sm sm:text-sm ${errors?.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary focus:border-primary`}
+                />
+                {errors?.name && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>}
+              </div>
               <div>
                 <label htmlFor="task-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Task Description</label>
                 <textarea

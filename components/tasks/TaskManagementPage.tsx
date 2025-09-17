@@ -1,17 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import type { Task } from '../../types';
-import { PlusIcon } from '../icons/Icons';
+import { PlusIcon, TrashIcon } from '../icons/Icons';
 import AddTaskModal from './AddTaskModal';
+import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
 
 interface TaskManagementPageProps {
   tasks: Task[];
   onAddTask: (task: Omit<Task, 'id' | 'isCompleted'>) => void;
   onToggleTask: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
-const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTask, onToggleTask }) => {
+const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTask, onToggleTask, onDeleteTask }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
+
   const { incompleteTasks, completedTasks } = useMemo(() => {
     const incomplete: Task[] = [];
     const completed: Task[] = [];
@@ -25,8 +29,21 @@ const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTas
     return { incompleteTasks: incomplete, completedTasks: completed };
   }, [tasks]);
 
+  const handleDeleteClick = (task: Task) => {
+    setDeletingTask(task);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingTask) {
+      onDeleteTask(deletingTask.id);
+    }
+    setDeleteModalOpen(false);
+    setDeletingTask(null);
+  };
+
   const TaskItem: React.FC<{ task: Task }> = ({ task }) => (
-    <div className="flex items-center p-3 bg-white dark:bg-dark-card rounded-lg shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center p-3 bg-white dark:bg-dark-card rounded-lg shadow-sm hover:shadow-md transition-shadow group">
       <input
         type="checkbox"
         checked={task.isCompleted}
@@ -35,13 +52,23 @@ const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTas
         aria-label={`Mark task "${task.description}" as ${task.isCompleted ? 'incomplete' : 'complete'}`}
       />
       <div className="ml-4 flex-grow">
-        <p className={`text-sm font-medium text-gray-900 dark:text-white ${task.isCompleted ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+        <p className={`text-sm font-bold text-gray-900 dark:text-white ${task.isCompleted ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+          {task.name}
+        </p>
+        <p className={`text-sm text-gray-600 dark:text-gray-300 ${task.isCompleted ? 'line-through' : ''}`}>
           {task.description}
         </p>
-        <p className={`text-xs text-gray-500 dark:text-gray-400 ${task.isCompleted ? 'line-through' : ''}`}>
+        <p className={`text-xs text-gray-500 dark:text-gray-400 mt-1 ${task.isCompleted ? 'line-through' : ''}`}>
           Due: {task.deadline}
         </p>
       </div>
+      <button
+        onClick={() => handleDeleteClick(task)}
+        className="ml-4 p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label={`Delete task "${task.name}"`}
+      >
+        <TrashIcon className="h-5 w-5" />
+      </button>
     </div>
   );
 
@@ -87,6 +114,16 @@ const TaskManagementPage: React.FC<TaskManagementPageProps> = ({ tasks, onAddTas
         onClose={() => setIsModalOpen(false)}
         onSave={onAddTask}
       />
+
+      {deletingTask && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          itemName={deletingTask.name}
+          itemType="task"
+        />
+      )}
     </div>
   );
 };

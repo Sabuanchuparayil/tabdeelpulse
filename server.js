@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -178,6 +177,7 @@ const initializeDatabase = async () => {
         await client.query(`
             CREATE TABLE tasks (
                 id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
                 deadline DATE NOT NULL,
                 is_completed BOOLEAN DEFAULT FALSE
@@ -648,16 +648,29 @@ app.post('/api/threads/:threadId/messages', async (req, res) => {
 // --- Tasks ---
 app.get('/api/tasks', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM tasks ORDER BY id DESC');
-        res.json(result.rows.map(r => ({ ...r, id: String(r.id), isCompleted: r.is_completed })));
+        const result = await pool.query('SELECT * FROM tasks ORDER BY deadline ASC, id DESC');
+        res.json(result.rows.map(r => ({
+            id: String(r.id),
+            name: r.name,
+            description: r.description,
+            deadline: r.deadline,
+            isCompleted: r.is_completed
+        })));
     } catch (err) { res.status(500).json({ message: 'Internal Server Error' }); }
 });
 app.post('/api/tasks', async (req, res) => {
-    const { description, deadline } = req.body;
+    const { name, description, deadline } = req.body;
     try {
-        const query = 'INSERT INTO tasks (description, deadline, is_completed) VALUES ($1, $2, $3) RETURNING *';
-        const result = await pool.query(query, [description, deadline, false]);
-        res.status(201).json({ ...result.rows[0], id: String(result.rows[0].id) });
+        const query = 'INSERT INTO tasks (name, description, deadline, is_completed) VALUES ($1, $2, $3, $4) RETURNING *';
+        const result = await pool.query(query, [name, description, deadline, false]);
+        const r = result.rows[0];
+        res.status(201).json({
+            id: String(r.id),
+            name: r.name,
+            description: r.description,
+            deadline: r.deadline,
+            isCompleted: r.is_completed
+        });
     } catch (err) { res.status(500).json({ message: 'Internal Server Error' }); }
 });
 app.put('/api/tasks/:id', async (req, res) => {
@@ -666,9 +679,31 @@ app.put('/api/tasks/:id', async (req, res) => {
     try {
         const query = 'UPDATE tasks SET is_completed = $1 WHERE id = $2 RETURNING *';
         const result = await pool.query(query, [isCompleted, id]);
-        res.json({ ...result.rows[0], id: String(result.rows[0].id) });
+        const r = result.rows[0];
+        if (!r) return res.status(404).json({ message: 'Task not found' });
+        res.json({
+            id: String(r.id),
+            name: r.name,
+            description: r.description,
+            deadline: r.deadline,
+            isCompleted: r.is_completed
+        });
     } catch (err) { res.status(500).json({ message: 'Internal Server Error' }); }
 });
+app.delete('/api/tasks/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+        res.status(204).send();
+    } catch (err) {
+        console.error(`Error deleting task ${id}:`, err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 
 // --- Announcements (Database-backed) ---
 app.get('/api/announcements', async (req, res) => {

@@ -85,6 +85,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
     }
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+        const response = await fetch(`${backendUrl}/api/tasks/${taskId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete task');
+        fetchData(); // Refetch data
+    } catch (error) {
+        console.error("Error deleting task:", error);
+    }
+  };
+
   const handleAddAnnouncement = async (announcementData: { title: string; content: string }) => {
     if (!user) return;
 
@@ -153,7 +165,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
       case 'messages':
         return <MessagesPage />;
       case 'tasks':
-        return <TaskManagementPage tasks={tasks} onAddTask={handleAddTask} onToggleTask={handleToggleTask} />;
+        return <TaskManagementPage tasks={tasks} onAddTask={handleAddTask} onToggleTask={handleToggleTask} onDeleteTask={handleDeleteTask} />;
       case 'users':
         return <UserManagementPage />;
       case 'profile':
