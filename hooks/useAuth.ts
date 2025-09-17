@@ -17,6 +17,7 @@ interface AuthContextType {
   changePassword: (userId: number, currentPassword: string, newPassword: string) => Promise<void>;
   createRole: (newRole: Role) => Promise<void>;
   updateRole: (roleId: string, updatedPermissions: Permission[]) => Promise<void>;
+  deleteRole: (roleId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -228,6 +229,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const deleteRole = useCallback(async (roleId: string) => {
+    try {
+      const response = await fetch(`${backendUrl}/api/roles/${roleId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to delete role.' }));
+        throw new Error(errorData.message);
+      }
+      setRoles(prevRoles => prevRoles.filter(role => role.id !== roleId));
+      // Also need to refetch users as their roles might have changed
+      const usersRes = await fetch(`${backendUrl}/api/users`);
+      if (usersRes.ok) {
+        setRawAllUsers(await usersRes.json());
+      }
+    } catch (error) {
+        console.error("Error deleting role:", error);
+        throw error;
+    }
+  }, []);
+
   const user = useMemo(() => activeUser ? enhanceUser(activeUser) : null, [activeUser, enhanceUser]);
 
   const hasPermission = useCallback((permission: Permission): boolean => {
@@ -253,7 +275,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       changePassword,
       createRole,
       updateRole,
-  }), [user, originalUser, allUsers, roles, login, logout, switchUser, hasPermission, addUser, updateUser, deleteUser, changePassword, createRole, updateRole]);
+      deleteRole,
+  }), [user, originalUser, allUsers, roles, login, logout, switchUser, hasPermission, addUser, updateUser, deleteUser, changePassword, createRole, updateRole, deleteRole]);
 
   return React.createElement(AuthContext.Provider, { value }, children);
 };

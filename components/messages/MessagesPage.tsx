@@ -104,6 +104,25 @@ const MessagesPage: React.FC = () => {
         }
     };
 
+    const handleUpdateParticipants = async (threadId: string, participantIds: number[]) => {
+        if (!currentUser) return;
+        try {
+            const response = await fetch(`${backendUrl}/api/threads/${threadId}/participants`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participantIds, currentUserId: currentUser.id }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to update participants');
+            }
+            // Refetch threads to update the UI with new participant list
+            await fetchThreads();
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Failed to update participants. Please try again.");
+        }
+    };
+
     const activeThread = threads.find(t => String(t.id) === selectedThreadId);
 
     const ThreadListItem: React.FC<{ thread: Thread; isActive: boolean }> = ({ thread, isActive }) => (
@@ -156,6 +175,7 @@ const MessagesPage: React.FC = () => {
                         thread={activeThread} 
                         onBack={() => setSelectedThreadId(null)}
                         onSendMessage={handleSendMessage}
+                        onUpdateParticipants={handleUpdateParticipants}
                     />
                  ) : (
                     <div className="flex-1 items-center justify-center text-gray-500 hidden md:flex">Select a conversation</div>

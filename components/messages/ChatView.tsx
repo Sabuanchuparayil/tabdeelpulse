@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import type { Thread } from '../../types';
-import { PaperClipIcon, SparklesIcon, ArrowLeftIcon, PaperAirplaneIcon } from '../icons/Icons';
+import { PaperClipIcon, SparklesIcon, ArrowLeftIcon, PaperAirplaneIcon, PencilIcon } from '../icons/Icons';
 import { GoogleGenAI } from "@google/genai";
+import ManageParticipantsModal from './ManageParticipantsModal';
+import { useAuth } from '../../hooks/useAuth';
 
 interface ChatViewProps {
   thread: Thread;
   onBack: () => void;
   onSendMessage: (threadId: string, messageText: string) => void;
+  onUpdateParticipants: (threadId: string, participantIds: number[]) => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage }) => {
+const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUpdateParticipants }) => {
     const [summary, setSummary] = useState<string>('');
     const [isLoadingSummary, setIsLoadingSummary] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [newMessage, setNewMessage] = useState('');
+    const [isManageModalOpen, setManageModalOpen] = useState(false);
+    const { user: currentUser, allUsers } = useAuth();
 
     const handleSummarize = async () => {
         setIsLoadingSummary(true);
@@ -51,6 +56,13 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage }) =>
         }
     };
 
+    const handleSaveParticipants = (threadId: string, participantIds: number[]) => {
+        onUpdateParticipants(threadId, participantIds);
+        setManageModalOpen(false);
+    };
+
+    if (!currentUser) return null;
+
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-dark-bg h-full">
@@ -64,8 +76,15 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage }) =>
                 <h3 className="font-bold text-lg text-gray-900 dark:text-white">{thread.title}</h3>
                 <div className="flex items-center space-x-1 mt-1">
                     {thread.participants.map(p => (
-                        <img key={p.name} src={p.avatarUrl} alt={p.name} title={p.name} className="h-6 w-6 rounded-full object-cover ring-2 ring-white dark:ring-dark-bg" />
+                        <img key={p.id} src={p.avatarUrl} alt={p.name} title={p.name} className="h-6 w-6 rounded-full object-cover ring-2 ring-white dark:ring-dark-bg" />
                     ))}
+                    <button 
+                        onClick={() => setManageModalOpen(true)} 
+                        className="ml-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        title="Manage Participants"
+                    >
+                        <PencilIcon className="h-4 w-4" />
+                    </button>
                 </div>
             </div>
         </div>
@@ -133,6 +152,15 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage }) =>
             </div>
         </div>
       </div>
+
+      <ManageParticipantsModal
+        isOpen={isManageModalOpen}
+        onClose={() => setManageModalOpen(false)}
+        onSave={handleSaveParticipants}
+        thread={thread}
+        allUsers={allUsers}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

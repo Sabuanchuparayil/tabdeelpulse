@@ -158,7 +158,7 @@ export interface Message {
 export interface Thread {
     id: string;
     title: string;
-    participants: { name: string; avatarUrl: string }[];
+    participants: { id: number; name: string; avatarUrl: string }[];
     messages: Message[];
     lastMessage: string;
     timestamp: string;

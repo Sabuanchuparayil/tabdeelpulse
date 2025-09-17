@@ -2,14 +2,19 @@ import React, { useState } from 'react';
 import type { Role, Permission } from '../../types';
 import EditRoleModal from './EditRoleModal';
 import CreateRoleModal from './CreateRoleModal';
-import { ShieldCheckIcon, PencilIcon, PlusIcon } from '../icons/Icons';
+import DeleteConfirmationModal from '../users/DeleteConfirmationModal';
+import { ShieldCheckIcon, PencilIcon, PlusIcon, TrashIcon } from '../icons/Icons';
 import { useAuth } from '../../hooks/useAuth';
 
 const RoleManagementPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const { roles, createRole, updateRole, hasPermission } = useAuth();
+  const [deletingRole, setDeletingRole] = useState<Role | null>(null);
+
+  const { roles, createRole, updateRole, deleteRole, hasPermission } = useAuth();
 
   const handleEditRole = (role: Role) => {
     setSelectedRole(role);
@@ -37,6 +42,26 @@ const RoleManagementPage: React.FC = () => {
     }
   };
 
+  const handleDeleteClick = (role: Role) => {
+    setDeletingRole(role);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingRole) return;
+    try {
+      await deleteRole(deletingRole.id);
+      setDeleteModalOpen(false);
+      setDeletingRole(null);
+    } catch (error: any) {
+       console.error("Failed to delete role:", error);
+       alert(`Error deleting role: ${error.message}`);
+       setDeleteModalOpen(false);
+       setDeletingRole(null);
+    }
+  };
+
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -53,7 +78,9 @@ const RoleManagementPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {roles.map(role => (
+        {roles.map(role => {
+          const isDefaultRole = ['Administrator', 'Manager', 'Technician'].includes(role.id);
+          return (
           <div key={role.id} className="bg-white dark:bg-dark-card shadow-md rounded-lg p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center mb-3">
@@ -77,19 +104,30 @@ const RoleManagementPage: React.FC = () => {
                 </div>
               </div>
             </div>
-             <div className="mt-6 text-right">
+             <div className="mt-6 text-right flex items-center justify-end space-x-3">
                 {hasPermission('roles:manage') && (
-                    <button
-                        onClick={() => handleEditRole(role)}
-                        className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                    >
-                        <PencilIcon className="h-4 w-4 mr-2" />
-                        Edit Permissions
-                    </button>
+                    <>
+                      <button
+                          onClick={() => handleEditRole(role)}
+                          className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                      >
+                          <PencilIcon className="h-4 w-4 mr-2" />
+                          Edit
+                      </button>
+                       <button
+                          onClick={() => handleDeleteClick(role)}
+                          disabled={isDefaultRole}
+                          className="inline-flex items-center justify-center rounded-md border border-transparent bg-red-100 dark:bg-red-900/40 px-4 py-2 text-sm font-medium text-red-700 dark:text-red-300 shadow-sm hover:bg-red-200 dark:hover:bg-red-900/60 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={isDefaultRole ? "Default system roles cannot be deleted." : "Delete role"}
+                      >
+                          <TrashIcon className="h-4 w-4 mr-2" />
+                          Delete
+                      </button>
+                    </>
                 )}
             </div>
           </div>
-        ))}
+        )})}
       </div>
       
       {selectedRole && (
@@ -106,6 +144,16 @@ const RoleManagementPage: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onSave={handleCreateRole}
       />
+
+      {deletingRole && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          itemName={deletingRole.name}
+          itemType="role"
+        />
+      )}
     </div>
   );
 };

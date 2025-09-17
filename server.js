@@ -257,7 +257,7 @@ const initializeDatabase = async () => {
 // --- Helper to get user details for messaging (uses in-memory cache) ---
 const getUserDetails = (userId) => {
     const user = db.users.find(u => u.id === Number(userId));
-    return user ? { name: user.name, avatarUrl: user.avatarUrl } : { name: 'Unknown User', avatarUrl: '' };
+    return user ? { id: user.id, name: user.name, avatarUrl: user.avatarUrl } : { id: userId, name: 'Unknown User', avatarUrl: '' };
 };
 
 // --- Roles ---
@@ -311,6 +311,40 @@ app.put('/api/roles/:id', async (req, res) => {
     } catch (err) {
         console.error(`Error updating role ${id}:`, err);
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+app.delete('/api/roles/:id', async (req, res) => {
+    const { id } = req.params;
+    const defaultRoles = ['Administrator', 'Manager', 'Technician'];
+
+    if (defaultRoles.includes(id)) {
+        return res.status(403).json({ message: 'Cannot delete default system roles.' });
+    }
+    
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // Reassign users with this role to a default role (e.g., 'Technician')
+        await client.query("UPDATE users SET role = 'Technician' WHERE role = $1", [id]);
+        
+        // Delete the role
+        const deleteResult = await client.query('DELETE FROM roles WHERE id = $1', [id]);
+        
+        await client.query('COMMIT');
+        
+        if (deleteResult.rowCount === 0) {
+            return res.status(404).json({ message: 'Role not found' });
+        }
+
+        res.status(204).send();
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(`Error deleting role ${id}:`, err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    } finally {
+        client.release();
     }
 });
 
@@ -711,6 +745,46 @@ app.post('/api/threads/:threadId/messages', async (req, res) => {
         });
     } catch (err) { res.status(500).json({ message: 'Internal Server Error' }); }
 });
+
+app.put('/api/threads/:threadId/participants', async (req, res) => {
+    const { threadId } = req.params;
+    const { participantIds, currentUserId } = req.body;
+
+    if (!participantIds || !Array.isArray(participantIds) || !currentUserId) {
+        return res.status(400).json({ message: 'Participant IDs and current user ID are required.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Ensure the current user is always included
+        const finalParticipantIds = [...new Set([currentUserId, ...participantIds.map(id => Number(id))])];
+
+        // Delete old participants
+        await client.query('DELETE FROM thread_participants WHERE thread_id = $1', [threadId]);
+
+        // Insert new participants
+        const insertPromises = finalParticipantIds.map(userId => 
+            client.query('INSERT INTO thread_participants (thread_id, user_id) VALUES ($1, $2)', [threadId, userId])
+        );
+        await Promise.all(insertPromises);
+
+        await client.query('COMMIT');
+        
+        // Return the updated list of participants details
+        const newParticipantsDetails = finalParticipantIds.map(id => getUserDetails(id));
+        res.status(200).json({ success: true, participants: newParticipantsDetails });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(`Error updating participants for thread ${threadId}:`, err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    } finally {
+        client.release();
+    }
+});
+
 
 // --- Tasks ---
 app.get('/api/tasks', async (req, res) => {
