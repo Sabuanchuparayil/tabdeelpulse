@@ -785,6 +785,29 @@ app.put('/api/threads/:threadId/participants', async (req, res) => {
     }
 });
 
+app.delete('/api/threads/:threadId', async (req, res) => {
+    const { threadId } = req.params;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // The CASCADE option on the tables will handle deleting related messages and participants
+        const result = await client.query('DELETE FROM threads WHERE id = $1', [threadId]);
+        await client.query('COMMIT');
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Conversation not found.' });
+        }
+
+        res.status(204).send();
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(`Error deleting thread ${threadId}:`, err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    } finally {
+        client.release();
+    }
+});
+
 app.delete('/api/messages/:messageId', async (req, res) => {
     const { messageId } = req.params;
     const { userId } = req.body; // Sent from frontend for authorization

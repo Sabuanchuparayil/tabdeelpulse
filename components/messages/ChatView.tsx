@@ -12,15 +12,18 @@ interface ChatViewProps {
   onSendMessage: (threadId: string, messageText: string) => void;
   onUpdateParticipants: (threadId: string, participantIds: number[]) => void;
   onDeleteMessage: (threadId: string, messageId: number) => void;
+  onDeleteThread: (threadId: string) => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUpdateParticipants, onDeleteMessage }) => {
+const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUpdateParticipants, onDeleteMessage, onDeleteThread }) => {
     const [summary, setSummary] = useState<string>('');
     const [isLoadingSummary, setIsLoadingSummary] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [newMessage, setNewMessage] = useState('');
     const [isManageModalOpen, setManageModalOpen] = useState(false);
     const [deletingMessage, setDeletingMessage] = useState<Message | null>(null);
+    const [isThreadDeleteConfirmOpen, setThreadDeleteConfirmOpen] = useState(false);
+
 
     const { user: currentUser, allUsers } = useAuth();
 
@@ -65,11 +68,16 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUp
         setManageModalOpen(false);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDeleteMessage = () => {
         if (deletingMessage) {
             onDeleteMessage(thread.id, deletingMessage.id);
         }
         setDeletingMessage(null);
+    };
+
+    const handleConfirmDeleteThread = () => {
+        onDeleteThread(thread.id);
+        setThreadDeleteConfirmOpen(false);
     };
 
     if (!currentUser) return null;
@@ -99,14 +107,23 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUp
                 </div>
             </div>
         </div>
-        <button 
-            onClick={handleSummarize}
-            disabled={isLoadingSummary}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary/10 px-4 py-2 text-sm font-medium text-primary shadow-sm hover:bg-primary/20 disabled:opacity-50"
-        >
-            <SparklesIcon className={`h-5 w-5 mr-0 sm:mr-2 ${isLoadingSummary ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isLoadingSummary ? 'Generating...' : 'AI Summarize'}</span>
-        </button>
+        <div className="flex items-center space-x-2">
+            <button 
+                onClick={handleSummarize}
+                disabled={isLoadingSummary}
+                className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary/10 px-4 py-2 text-sm font-medium text-primary shadow-sm hover:bg-primary/20 disabled:opacity-50"
+            >
+                <SparklesIcon className={`h-5 w-5 mr-0 sm:mr-2 ${isLoadingSummary ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isLoadingSummary ? 'Generating...' : 'AI Summarize'}</span>
+            </button>
+            <button
+                onClick={() => setThreadDeleteConfirmOpen(true)}
+                className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50"
+                title="Delete Conversation"
+            >
+                <TrashIcon className="h-5 w-5" />
+            </button>
+        </div>
       </div>
 
       {/* Summary Box */}
@@ -186,11 +203,19 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, onBack, onSendMessage, onUp
         <DeleteConfirmationModal
             isOpen={!!deletingMessage}
             onClose={() => setDeletingMessage(null)}
-            onConfirm={handleConfirmDelete}
+            onConfirm={handleConfirmDeleteMessage}
             itemName="this message"
             itemType="message"
         />
       )}
+
+       <DeleteConfirmationModal
+            isOpen={isThreadDeleteConfirmOpen}
+            onClose={() => setThreadDeleteConfirmOpen(false)}
+            onConfirm={handleConfirmDeleteThread}
+            itemName={`the conversation "${thread.title}"`}
+            itemType="conversation"
+        />
     </div>
   );
 };

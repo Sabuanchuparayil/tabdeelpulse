@@ -159,6 +159,30 @@ const MessagesPage: React.FC = () => {
             setThreads(originalThreads); // Revert on failure
         }
     };
+    
+    const handleDeleteThread = async (threadId: string) => {
+        // Optimistic update
+        const originalThreads = [...threads];
+        const newThreads = threads.filter(t => t.id !== threadId);
+        setThreads(newThreads);
+
+        if (selectedThreadId === threadId) {
+            setSelectedThreadId(newThreads[0]?.id || null);
+        }
+
+        try {
+            const response = await fetch(`${backendUrl}/api/threads/${threadId}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete thread on server');
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Failed to delete conversation. Reverting changes.");
+            setThreads(originalThreads); // Revert on failure
+        }
+    };
 
     const activeThread = threads.find(t => String(t.id) === selectedThreadId);
 
@@ -214,6 +238,7 @@ const MessagesPage: React.FC = () => {
                         onSendMessage={handleSendMessage}
                         onUpdateParticipants={handleUpdateParticipants}
                         onDeleteMessage={handleDeleteMessage}
+                        onDeleteThread={handleDeleteThread}
                     />
                  ) : (
                     <div className="flex-1 items-center justify-center text-gray-500 hidden md:flex">Select a conversation</div>
