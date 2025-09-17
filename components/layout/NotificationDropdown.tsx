@@ -5,9 +5,10 @@ interface NotificationDropdownProps {
   notifications: Notification[];
   onMarkAllRead: () => void;
   onNotificationClick: (notification: Notification) => void;
+  onNavigate: (pageId: string) => void;
 }
 
-const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ notifications, onMarkAllRead, onNotificationClick }) => {
+const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ notifications, onMarkAllRead, onNotificationClick, onNavigate }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -48,9 +49,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ notificatio
         ))}
       </ul>
       <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-dark-card/50 text-center">
-        <a href="#" className="text-sm font-medium text-primary hover:text-primary/80">
+        <button 
+          onClick={() => onNavigate('notifications')}
+          className="text-sm font-medium text-primary hover:text-primary/80 w-full"
+        >
           View all notifications
-        </a>
+        </button>
       </div>
     </div>
   );

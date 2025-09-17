@@ -220,6 +220,7 @@ const Header: React.FC<HeaderProps> = ({ user, tasks, onLogout, onNavigate, onTo
               notifications={notifications}
               onMarkAllRead={handleMarkAllRead}
               onNotificationClick={handleNotificationClick}
+              onNavigate={onNavigate}
             />
           )}
         </div>

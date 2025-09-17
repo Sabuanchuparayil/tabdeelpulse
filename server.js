@@ -767,11 +767,40 @@ app.delete('/api/announcements/:id', async (req, res) => {
 
 // --- NEW MOCK ENDPOINTS to remove frontend mock data ---
 
-app.get('/api/notifications', (req, res) => {
-    res.json([
-        { id: '1', title: 'Payment Approved', description: 'Payment of AED 42,500.75 to Bosch Security has been approved.', timestamp: '15m ago', read: false, iconName: 'CheckCircleIcon', link: 'finance' },
-        { id: '2', title: 'New Message', description: 'You have a new message from Shiraj in "Q3 Marketing Campaign".', timestamp: '1h ago', read: false, iconName: 'ChatBubbleBottomCenterTextIcon', link: 'messages' },
-    ]);
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const pendingPayments = await pool.query(
+            "SELECT id, payee, amount FROM payment_instructions WHERE status = 'Pending' ORDER BY id DESC LIMIT 3"
+        );
+
+        const notifications = pendingPayments.rows.map((p, index) => ({
+            id: `payment_${p.id}`,
+            title: 'Pending Payment Approval',
+            description: `Payment of AED ${p.amount} to ${p.payee} requires your approval.`,
+            timestamp: `${(index + 1) * 5}m ago`,
+            read: false,
+            iconName: 'CreditCardIcon',
+            link: 'finance'
+        }));
+        
+        // Add a mock message notification for variety
+        if (notifications.length < 3) {
+             notifications.push({ 
+                id: 'msg_1', 
+                title: 'New Message', 
+                description: 'You have a new message from Manager Mike in "Project Alpha Launch".', 
+                timestamp: '1h ago', 
+                read: false, 
+                iconName: 'ChatBubbleBottomCenterTextIcon', 
+                link: 'messages' 
+            });
+        }
+
+        res.json(notifications);
+    } catch (err) {
+        console.error('Error fetching notifications:', err);
+        res.status(500).json([]);
+    }
 });
 
 app.get('/api/jobs/:jobId/comments', (req, res) => {
@@ -795,14 +824,52 @@ app.post('/api/jobs/:jobId/comments', (req, res) => {
 
 
 app.get('/api/finance/overview', (req, res) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const data = months.map(month => ({
+        name: month,
+        income: Math.floor(Math.random() * (8000 - 2000 + 1)) + 2000,
+        expenses: Math.floor(Math.random() * (7000 - 1000 + 1)) + 1000,
+    }));
+    res.json(data);
+});
+
+app.get('/api/activity', (req, res) => {
     res.json([
-        { name: 'Jan', income: 4000, expenses: 2400 }, { name: 'Feb', income: 3000, expenses: 1398 }, { name: 'Mar', income: 2000, expenses: 9800 },
-        { name: 'Apr', income: 2780, expenses: 3908 }, { name: 'May', income: 1890, expenses: 4800 }, { name: 'Jun', income: 2390, expenses: 3800 },
+        {
+            id: 1,
+            user: { name: 'Manager Mike', avatarUrl: 'https://picsum.photos/seed/manager/100/100' },
+            action: 'approved payment instruction for',
+            target: 'Bosch Security',
+            timestamp: '2h ago'
+        },
+        {
+            id: 2,
+            user: { name: 'Technician Tom', avatarUrl: 'https://picsum.photos/seed/tech/100/100' },
+            action: 'updated the status of job',
+            target: '#SJ-001',
+            timestamp: 'Yesterday'
+        }
     ]);
 });
 
-app.get('/api/activity', (req, res) => res.json([]));
-app.get('/api/messages/unread-count', (req, res) => res.json({ count: 5 }));
+app.get('/api/messages/unread-count', async (req, res) => {
+    try {
+        // A simple simulation: count messages not sent by the admin user (ID 1)
+        const result = await pool.query(`
+            SELECT COUNT(m.id)
+            FROM messages m
+            JOIN thread_participants tp ON m.thread_id = tp.thread_id
+            WHERE tp.user_id = 1 AND m.user_id != 1;
+        `);
+        const count = parseInt(result.rows[0].count, 10) || 0;
+        // Add a static number to simulate other unread sources for a more dynamic feel
+        res.json({ count: count + 3 });
+    } catch (err) {
+        console.error("Error fetching unread count:", err);
+        res.status(500).json({ count: 5 }); // Fallback on error
+    }
+});
+
 
 // --- Health Check Endpoint ---
 app.get('/', (req, res) => {

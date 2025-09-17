@@ -13,6 +13,7 @@ import AccountHeadsPage from '../accounts/AccountHeadsPage';
 import SettingsPage from '../settings/SettingsPage';
 import TaskManagementPage from '../tasks/TaskManagementPage';
 import AnnouncementsPage from '../announcements/AnnouncementsPage';
+import NotificationsPage from '../notifications/NotificationsPage';
 import type { Task, Announcement } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { ExclamationTriangleIcon } from '../icons/Icons';
@@ -180,6 +181,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, isDarkMode, toggleDar
         return <SettingsPage isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} />;
       case 'announcements':
         return <AnnouncementsPage announcements={announcements} onAddAnnouncement={handleAddAnnouncement} onDeleteAnnouncement={handleDeleteAnnouncement} />;
+      case 'notifications':
+        return <NotificationsPage />;
       case 'dashboard':
       default:
         return <DashboardPage onNavigate={handleNavigate} announcements={announcements} />;
